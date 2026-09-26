@@ -4,6 +4,7 @@ import logging
 import numpy as np
 import os
 import stable_baselines3
+import sys
 import stable_baselines3.common
 import stable_baselines3.common.base_class
 import torch
@@ -22,6 +23,10 @@ from stable_baselines3.common.noise import NormalActionNoise
 
 # while not called directly, we need to import this so the environments are registered
 import envs
+
+# visibility/ is shared across baselines and lives one level up in training/
+sys.path.append(str(Path(__file__).resolve().parent.parent))
+from visibility.reward_visibility import RewardTermsCallback
 
 logging.basicConfig(level=logging.INFO, format='%(message)s')
 logger = logging.getLogger(__name__)
@@ -557,10 +562,16 @@ def train(ctx: dict, environment: str, timesteps: int):
         name_prefix=f"{environment}_{algorithm_name}_cp_"
     )
 
+    callbacks = [checkpoint_callback, eval_callback]
+    # only envs with configurable reward weights (currently Env01-v3) expose reward terms
+    reward_weights = getattr(env.unwrapped, "reward_weights", None)
+    if reward_weights is not None:
+        callbacks.append(RewardTermsCallback(reward_weights))
+
     model.learn(
         total_timesteps=timesteps,
         tb_log_name=f"{environment}_{algorithm_name}",
-        callback=CallbackList([checkpoint_callback, eval_callback])
+        callback=CallbackList(callbacks)
     )
 
 
