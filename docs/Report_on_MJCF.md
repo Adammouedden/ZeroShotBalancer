@@ -93,27 +93,12 @@ Positions are generally **local**: the chassis `pos` is relative to the world, i
 4. **Attach motors and sensors.** Connect one motor to each named wheel joint. Begin with a simple, bounded torque input; only then consider more faithful motor behavior, actuator delay, encoders, or IMU noise. Keep the controller in our Gymnasium/Python code so we can test different policies against the same MJCF.
 5. **Compile and run short physical checks.** Load the XML in MuJoCo to catch missing attributes, invalid references, or unrealistic inertia. Observe the robot with no control, then apply small equal wheel commands to check travel direction and opposite commands to check turning. Confirm contacts, wheel speeds, and whether the chassis tips as expected. Correct the model before starting RL training.
 
-With MuJoCo's Python package installed, the standalone viewer can open a saved XML file with:
-
-```text
-python -m mujoco.viewer --mjcf=/path/to/balancing_starter.xml
-```
-
-Loading the file with `mujoco.MjModel.from_xml_path(...)` in Python also compiles it and reports errors. The example above was compiled and stepped with MuJoCo 3.14.0: it produced a model with **9 position coordinates, 8 velocity coordinates, 2 actuator controls, and 8 sensor values**. The position/velocity difference is expected because the chassis free joint represents orientation with a quaternion in `qpos`. A successful compile confirms valid model structure, **not** realistic robot behavior. [2, 3]
-
-## What changes for our experiments?
-
-Our pitch proposes testing generalization across friction, gravity, drag or push disturbances, payload shifts, and motor degradation. [4] The first MJCF should establish one nominal robot. Later, the Gymnasium environment can change permitted physical parameters at reset and run separate evaluation conditions. We should keep a record of the nominal values, the training ranges, and the held-out test ranges so the zero-shot claim is meaningful. Friction belongs to contacting geoms; masses and centers of mass belong to the robot's physical model; applied pushes and episode logic typically belong to simulation code. Aerodynamic effects require a deliberate MuJoCo fluid-force model or disturbance approximation, rather than a generic `drag` XML tag. [1, 2]
-
-The XML describes a *simulated* sensor and actuator. It does not guarantee that the policy sees the same signals or experiences the same latency, motor saturation, or friction as the ESP32-based robot. For transfer to hardware, compare its observation list, update rate, axis conventions, control limits, and initial conditions with the firmware team's actual design. Calibrate and document the differences before treating simulation success as evidence of real-world generalization.
-
 ## A note on defaults and inheritance
 
-The `<default>` / `class` / `childclass` example in the MuJoCo modeling guide is useful for understanding shared settings: an explicitly set attribute wins; otherwise an element uses the active class, which can be inherited through an ancestor body's `childclass`. The four colors in that example are correct. **The documentation explicitly says the color-only example does not compile**, because required geometry information is missing. We can introduce defaults after we have a working robot model, for example to share wheel-friction settings or visual colors. They shorten repeated XML; they do not supply the missing physical design. [1]
+The `<default>` / `class` / `childclass` example in the MuJoCo modeling guide is useful for understanding shared settings: an explicitly set attribute wins; otherwise an element uses the active class, which can be inherited through an ancestor body's `childclass`.
 
 ## References
 
 1. MuJoCo Documentation, [Modeling](https://mujoco.readthedocs.io/en/stable/modeling.html): kinematic tree, defaults, frames, actuators, and sensors.
 2. MuJoCo Documentation, [XML Reference](https://mujoco.readthedocs.io/en/stable/XMLreference.html): element attributes and physical interpretation.
 3. MuJoCo Documentation, [Python](https://mujoco.readthedocs.io/en/stable/python.html): loading XML and using the viewer.
-4. *Sim-to-Real Generalization for an Embodied Balancing Robot*, team project pitch (provided with this report).

@@ -3,6 +3,9 @@ name = "zeroshotbalancer"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
+authors = [
+    { name = "david-orjuela", email = "david1.orjuela@gmail.com" }
+]
 requires-python = ">=3.13"
 dependencies = [
     "click>=8.5.0",
@@ -15,6 +18,7 @@ dependencies = [
     "stable-baselines3>=2.9.0",
     "tensorboard>=2.21.0",
     "torch>=2.14.0",
+    "mujoco>=3.14.0"
 ]
 
 [project.optional-dependencies]
