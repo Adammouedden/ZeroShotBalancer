@@ -58,7 +58,7 @@ YAW_TURN_TIMES = (2.0, 4.0, 5.0, 10.0, 15.0, 20.0, 25.0)
 
 """
 
-DEFAULT_REWARD_WEIGHTS = dict(alive=0.6, pitch=0.05, speed_error=0.15, lean=5.0, direction_error=0.15)
+DEFAULT_REWARD_WEIGHTS = dict(alive=0.6, pitch=0.05, speed_error=0.15, lean=5.0, direction_error=0.15, uneven_wheel_speed=0.007)
 
 class ControlAgentTrainingEnv(ControlAgentBaseEnv):
     def __init__(self, reward_weights=None, **kwargs):
@@ -144,13 +144,16 @@ class ControlAgentTrainingEnv(ControlAgentBaseEnv):
             # then reward for leaning backwards, needs to speed up backwards
             lean_dir = -1.0
 
+        # Punish non-smooth turning
+        uneven_wheel_speed = abs(self.target_yaw - self.get_wheel_yaw())
 
         self.reward_terms = {
             "alive": self.reward_weights["alive"],
             "pitch": -1 * self.reward_weights["pitch"] * abs(pitch),
             "speed_error": -1 * self.reward_weights["speed_error"] * dv_s,
             "lean": lean_dir * pitch * self.reward_weights["lean"] * dv_s,
-            "direction_error": -1 * self.reward_weights["direction_error"] * abs(direction_error)
+            "direction_error": -1 * self.reward_weights["direction_error"] * abs(direction_error),
+            "uneven_wheel_speed": -1 * self.reward_weights["uneven_wheel_speed"] * uneven_wheel_speed
         } # future plans are to change direction_error to: -1 * weight * (1 - cos(direction_error)) for smooth training with a maximum at 0
 
         return sum(self.reward_terms.values())

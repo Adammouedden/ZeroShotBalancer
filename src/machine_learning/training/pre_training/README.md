@@ -26,7 +26,7 @@ direction_error = target_yaw - get_yaw()
 
 (Results on this experiment are not obvious because the evaluation was too easy, it was upgraded for subsequent experiments)
 
-[Results](../../evaluation/comparison_testing/test-01)
+[Eval Results](../../evaluation/comparison_testing/test-01)
 
 
 [Major improvements](control_agent/logs/ControlAgentTrainingEnv_PPO_2)
@@ -42,7 +42,7 @@ Logs are off by 1 because the first one was a smoke test
 
 Scalar reward weight for lean halved from 10 to 5
 
-[Results](../../evaluation/comparison_testing/test-02)
+[Eval Results](../../evaluation/comparison_testing/test-02)
 
 [Major improvements](control_agent/logs/ControlAgentTrainingEnv_PPO_3)
 
@@ -54,7 +54,7 @@ Scalar reward weight for lean halved from 10 to 5
 
 Removing dyd, differences in left_wheel_velocity and right_wheel_velocity (l_wheel_v - r_wheel_v) which was used as a penalty for excessive spinning, thought to be redundant
 
-[Results](../../evaluation/comparison_testing/test-03)
+[Eval Results](../../evaluation/comparison_testing/test-03)
 
 
 [Major regressions](control_agent/logs/ControlAgentTrainingEnv_PPO_4)
@@ -67,10 +67,9 @@ Removing dyd, differences in left_wheel_velocity and right_wheel_velocity (l_whe
 
 Updated observations to now receive direction_error as input, (self.target_yaw - self.get_yaw() + np.pi) % (2*np.pi) - np.pi
 
-[Results so far](../../evaluation/comparison_testing/test-04)
+[Eval results improved upon prior regressions](../../evaluation/comparison_testing/test-04)
 
-[Logs](control_agent/logs/ControlAgentTrainingEnv_PPO_5)
-
+[Massive improvements](control_agent/logs/ControlAgentTrainingEnv_PPO_5)
 
 
 ---
@@ -91,6 +90,24 @@ Altering training code to contain random target_yaw swapping at set time interva
 
 ---
 ### Experiment 7:
+---
+
+#### If curriculum learning is introduced, then the agent can maximize one reward term at a time. 
+
+Introduce curriculum learning onto the [training environment](control_agent/envs/control_agent_training_environment.py) by splitting training into two phases. 
+
+* **Phase 1**: Balancing & Target Speed
+Phase 1 will keep target_yaw held constant at a start_yaw initialized value for the entire episode, this way direction_error will remain 0 across the entire training run.
+
+Checkpoint the weights and continue phase 2 using the checkpointed phase 1.
+
+* **Phase 2**: Target Yaw
+Phase 2 will use the smooth, dynamic target_yaw scheduler that will set the target_yaw to a different value at set time intervals. This is the same training scheduler introduced in experiment 6 
+
+Theoretically the agent should maximize ```alive```, ```lean```, and ```speed_error``` in phase 1, then maximize ```speed_error``` and ```uneven_wheel_speed``` in phase 2.
+
+---
+### Experiment 8:
 ---
 
 #### If the agent receives a smoother reward term for direction error that handles values at -pi and pi cleaner, then stable weight updates will lead to improved reward maximization

@@ -253,6 +253,10 @@ class ControlAgentBaseEnv(MujocoEnv, utils.EzPickle):
         angles = rotation.as_euler('xyz', degrees=False)
         return angles[2]
 
+    def get_wheel_yaw(self) -> float:
+            vel_l, vel_r = self.get_wheel_velocities()
+            wheel_yaw = vel_l - (-1 * vel_r)
+            return wheel_yaw
 
     def _get_obs(self):
         self.loop_count += 1
