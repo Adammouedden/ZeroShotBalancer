@@ -1,0 +1,26 @@
+{
+    "model_a": {
+        "model": "/home/adamm/Documents/AdamVault1/PROJECTS/ZeroShotBalancer/src/machine_learning/training/reference_baseline/models/ReferenceBaselineTrainingEnv_PPO/best_model.zip",
+        "env": "ReferenceBaselineTrainingEnv",
+        "duration_s": 60.0,
+        "reset_grace_s": 1.0,
+        "falls": 10,
+        "mean_speed_error": 8.034873803674376,
+        "mean_yaw_error": 0.3689961327961866,
+        "mean_abs_pitch_deg": 6.824018408911097,
+        "max_reward": 9.103641020802051,
+        "total_reward": 11222.029852362346
+    },
+    "model_b": {
+        "model": "/home/adamm/Documents/AdamVault1/PROJECTS/ZeroShotBalancer/src/machine_learning/training/pre_training/control_agent/models/ControlAgentTrainingEnv_PPO/ControlAgentTrainingEnv_PPO_cp__120000_steps.zip",
+        "env": "ControlAgentTrainingEnv",
+        "duration_s": 60.0,
+        "reset_grace_s": 1.0,
+        "falls": 22,
+        "mean_speed_error": 9.553941488413473,
+        "mean_yaw_error": 0.22723767070228026,
+        "mean_abs_pitch_deg": 7.241650913482228,
+        "max_reward": 4.720719672244295,
+        "total_reward": 8361.001446910495
+    }
+}

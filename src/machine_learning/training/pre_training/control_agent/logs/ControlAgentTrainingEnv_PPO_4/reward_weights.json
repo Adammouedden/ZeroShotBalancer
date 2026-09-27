@@ -1,0 +1,7 @@
+{
+  "alive": 0.6,
+  "pitch": 0.05,
+  "speed_error": 0.15,
+  "lean": 5.0,
+  "direction_error": 0.15
+}
