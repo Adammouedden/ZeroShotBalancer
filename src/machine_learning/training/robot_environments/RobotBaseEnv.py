@@ -6,6 +6,7 @@ import pathlib
 from gymnasium import utils
 from gymnasium.envs.mujoco import MujocoEnv
 from gymnasium.spaces import Box
+from PIL import Image, ImageDraw, ImageFont
 from scipy.spatial.transform import Rotation
 
 
@@ -122,7 +123,36 @@ class RobotBaseEnv(MujocoEnv, utils.EzPickle):
                 text1="Target Yaw",
                 text2="{:.2f}".format(self.target_yaw)
             )
-        return super().render()
+
+        frame = super().render()
+
+        if self.render_mode == 'rgb_array' and frame is not None:
+            frame = self._annotate_frame(frame)
+
+        return frame
+
+    def _annotate_frame(self, frame: np.ndarray) -> np.ndarray:
+        # burns target/actual speed and yaw into the top-left corner of a
+        # rendered rgb_array frame, so they show up in recorded training videos
+        # (the mujoco viewer overlay used in "human" mode above isn't captured
+        # by RecordVideo, since that wrapper only ever sees the raw pixel array)
+        image = Image.fromarray(frame)
+        draw = ImageDraw.Draw(image)
+        font = ImageFont.load_default(size=20)
+
+        lines = [
+            "Target Speed: {:.2f}".format(self.target_wheel_speed),
+            "Actual Speed: {:.2f}".format(self.get_wheel_speed()),
+            "Target Yaw: {:.2f}".format(self.target_yaw),
+            "Actual Yaw: {:.2f}".format(self.get_yaw()),
+        ]
+
+        y = 10
+        for line in lines:
+            draw.text((10, y), line, font=font, fill=(255, 255, 255), stroke_width=2, stroke_fill=(0, 0, 0))
+            y += 24
+
+        return np.array(image)
 
     def get_pitch(self) -> float:
         quat = self.data.body("robot_body").xquat

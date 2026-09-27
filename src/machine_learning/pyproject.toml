@@ -22,3 +22,12 @@ tflite = [
     "tensorflow>=2.21.0",
 ]
 
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+# Shared training code, installed (editable) so any training script can import it
+# regardless of which folder the script is run from
+[tool.hatch.build.targets.wheel]
+packages = ["training/visibility", "training/robot_environments"]

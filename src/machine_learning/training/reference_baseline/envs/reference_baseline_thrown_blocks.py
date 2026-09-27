@@ -1,10 +1,11 @@
 import math
 import mujoco
 import numpy as np
+import pathlib
 
 from scipy.spatial.transform import Rotation
 
-from .RobotBaseEnv import RobotBaseEnv, WHEEL_SPEED_DELTA_MAX
+from robot_environments.RobotBaseEnv import RobotBaseEnv, WHEEL_SPEED_DELTA_MAX
 
 """
 Fires a block at the robot continuously from all directions
@@ -12,12 +13,15 @@ Fires a block at the robot continuously from all directions
 Fun to watch, but not great for training. There's too much going on for the
 robot to learn anything. Due to geometry, a lot of the hits are easy to take
 such as when it hits the sides. Problematic hits are the repeated shots hitting
-the front/back and same side repeatedly. This is what's done in Env03_v2.
+the front/back and same side repeatedly. This is what's done in ReferenceBaselineFineTuning.
 """
-class Env03(RobotBaseEnv):
+class ThrownBlocksEnv(RobotBaseEnv):
 
     def __init__(self, **kwargs):
-        RobotBaseEnv.__init__(self, 'env03_v1.xml', **kwargs)
+        # RobotBaseEnv resolves relative names against robot_environments/, so pass an absolute path
+        # to this env's own MJCF file
+        xml_path = pathlib.Path(__file__).parent / 'reference_baseline_thrown_blocks.xml'
+        RobotBaseEnv.__init__(self, str(xml_path), **kwargs)
 
         self.block_delay_time_start = None
         # time between each block firing

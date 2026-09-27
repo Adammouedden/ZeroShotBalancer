@@ -3,20 +3,43 @@ Headless evaluation of trained balancing policies.
 
   robustness: run Env03-v2 episodes with blocks fired at the front AND back,
               report survival rate per side (training only ever sees one side).
-  video:      record a continuous clip in Env01-v3 with changing speed / yaw
-              targets, resetting the robot whenever it falls.
+  video:      record a continuous clip in ReferenceBaselineTrainingEnv (or ControlAgentTrainingEnv
+              via --env) following a JSON speed / yaw schedule, resetting the robot whenever it falls.
 """
 import click
 import gymnasium as gym
 import imageio
+import importlib.util
+import json
 import numpy as np
 import stable_baselines3
+import sys
 
+from pathlib import Path
 from PIL import Image, ImageDraw
 
-# registers Env01-v3 / Env03-v2
+EVAL_DIR = Path(__file__).resolve().parent
+TRAINING_DIR = EVAL_DIR.parent / "training"
+
+# while not called directly, we need to import this so ReferenceBaselineTrainingEnv / Env03-v2 are registered
+sys.path.insert(0, str(TRAINING_DIR / "reference_baseline"))
 import envs
-from envs.env01_v1 import Env01
+
+from robot_environments.base_world_env import BaseWorldEnv
+
+# control_agent's env package is also named `envs`, so load its module by path and register it here
+_control_env_path = TRAINING_DIR / "pre_training/control_agent/envs/control_agent_training_environment.py"
+_spec = importlib.util.spec_from_file_location("control_agent_training_environment", _control_env_path)
+_control_env = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(_control_env)
+gym.register(
+    id="ControlAgentTrainingEnv",
+    entry_point=_control_env.ControlAgentTrainingEnv,
+    max_episode_steps=6000,
+    reward_threshold=6000,
+)
+
+VIDEO_ENVS = ["ReferenceBaselineTrainingEnv", "ControlAgentTrainingEnv"]
 
 CONTROL_DT = 0.005  # 250 physics steps x 0.02ms per env step
 VIDEO_FPS = 50
@@ -64,26 +87,54 @@ def robustness(models: tuple[str, ...], episodes: int, seed: int):
         env.close()
 
 
-# (start time s, target wheel speed, target yaw) - held until the next entry
-MIXED_SCHEDULE = [
-    (0, 0, 0),
-    (2, 15, 0),
-    (6, -15, 0),
-    (10, 30, 0),
-    (14, 0, 10),
-    (18, 15, -10),
-    (22, 0, 0),
-    (25, -30, 0),
-    (28, 0, 0),
-]
+BUILTIN_SCHEDULE = "env01"
+LAST_ENTRY_HOLD = 2.0  # seconds the final schedule entry is held before the clip ends
 
 
-def schedule_target(t: float) -> tuple[float, float]:
+def schedule_path(name: str) -> Path:
+    """
+    Relative paths that don't exist from the current directory are looked up in this folder.
+    """
+    path = Path(name)
+    if not path.is_absolute() and not path.exists():
+        path = EVAL_DIR / path
+    return path
+
+
+def load_schedule(name: str) -> list[list[float]]:
+    """
+    Schedule JSON: a list of [start time s, target wheel speed, target yaw], each held until the next entry.
+    """
+    path = schedule_path(name)
+    schedule = sorted(json.loads(path.read_text()))
+    if not schedule or any(len(entry) != 3 for entry in schedule):
+        raise click.BadParameter(f"{path} must be a non-empty list of [start, speed, yaw]")
+    return schedule
+
+
+def schedule_target(schedule: list[list[float]], t: float) -> tuple[float, float]:
     speed, yaw = 0.0, 0.0
-    for start, s, y in MIXED_SCHEDULE:
+    for start, s, y in schedule:
         if t >= start:
             speed, yaw = s, y
     return speed, yaw
+
+
+def yaw_error(robot, env_id: str) -> float:
+    if env_id == "ControlAgentTrainingEnv":
+        # target_yaw here is a heading (radians) tracked against get_yaw(), not a
+        # wheel-speed differential like get_wheel_yaw() - wrap it the same way the
+        # env's own direction_error reward term does, or the raw diff is meaningless
+        return abs((robot.target_yaw - robot.get_yaw() + np.pi) % (2 * np.pi) - np.pi)
+    return abs(robot.target_yaw - robot.get_wheel_yaw())
+
+
+def yaw_status_line(robot, env_id: str) -> str:
+    if env_id == "ControlAgentTrainingEnv":
+        heading = np.degrees(robot.get_yaw())
+        target_heading = np.degrees((robot.target_yaw + np.pi) % (2 * np.pi) - np.pi)
+        return f"heading {heading:6.1f}  target {target_heading:6.1f} deg"
+    return f"yaw    {robot.get_wheel_yaw():6.1f}  target {robot.target_yaw:6.1f}"
 
 
 def annotate(frame: np.ndarray, lines: list[str]) -> np.ndarray:
@@ -95,15 +146,33 @@ def annotate(frame: np.ndarray, lines: list[str]) -> np.ndarray:
     return np.asarray(img)
 
 
-@cli.command(help="Record a continuous Env01-v3 clip, resetting whenever the robot falls")
+@cli.command(help="Record a continuous clip following a speed / yaw schedule, resetting whenever the robot falls")
 @click.option('-m', '--model', required=True, help="model .zip")
 @click.option('-o', '--output', default="movies/balance_eval.mp4")
-@click.option('-d', '--duration', default=30.0, help="clip length in simulated seconds")
-@click.option('--schedule', type=click.Choice(["mixed", "env01"]), default="mixed",
-              help="mixed: custom speed + yaw changes; env01: Env01-v3's own speed-only schedule")
+@click.option('-d', '--duration', type=float, default=None,
+              help=f"clip length in simulated seconds (default: last schedule entry + {LAST_ENTRY_HOLD:.0f} s, "
+                   f"or 30 s for {BUILTIN_SCHEDULE})")
+@click.option('-s', '--schedule', 'schedule_name', default="mixed_schedule.json",
+              help=f"schedule JSON (looked up in this folder if not found), or '{BUILTIN_SCHEDULE}' "
+                   "for the env's own built-in schedule")
+@click.option('-e', '--env', 'env_id', type=click.Choice(VIDEO_ENVS), default=VIDEO_ENVS[0],
+              help="environment to record in (match the one the model was trained on)")
 @click.option('--seed', default=0)
-def video(model: str, output: str, duration: float, schedule: str, seed: int):
-    env = gym.make("Env01-v3", render_mode="rgb_array")
+def video(model: str, output: str, duration: float | None, schedule_name: str, env_id: str, seed: int):
+    schedule = None if schedule_name == BUILTIN_SCHEDULE else load_schedule(schedule_name)
+    results = record_video(model, output, schedule, env_id, duration, seed)
+    click.echo(f"Wrote {output}: {results['duration_s']:.0f}s, {results['falls']} fall(s), schedule={schedule_name}")
+
+
+def record_video(model: str, output: str, schedule: list[list[float]] | None, env_id: str,
+                 duration: float | None = None, seed: int = 0) -> dict:
+    """
+    Record a clip following `schedule` (None = the env's built-in schedule) and return tracking metrics.
+    """
+    if duration is None:
+        duration = 30.0 if schedule is None else schedule[-1][0] + LAST_ENTRY_HOLD
+
+    env = gym.make(env_id, render_mode="rgb_array")
     robot = env.unwrapped
     policy = stable_baselines3.PPO.load(model, device="cpu")
     np.random.seed(seed)
@@ -112,24 +181,31 @@ def video(model: str, output: str, duration: float, schedule: str, seed: int):
     frame_every = round(1 / (VIDEO_FPS * CONTROL_DT))
     total_steps = round(duration / CONTROL_DT)
     falls = 0
+    speed_errors, yaw_errors, pitches, rewards = [], [], [], []
 
+    Path(output).parent.mkdir(parents=True, exist_ok=True)
     with imageio.get_writer(output, fps=VIDEO_FPS) as writer:
         for step in range(total_steps):
             t = step * CONTROL_DT
             action, _ = policy.predict(obs, deterministic=True)
-            if schedule == "mixed":
-                # bypass Env01_v3.step's built-in schedule, drive the targets ourselves
-                robot.target_wheel_speed, robot.target_yaw = schedule_target(t)
-                obs, _, terminated, _, _ = Env01.step(robot, action)
+            if schedule is not None:
+                # bypass the env's built-in schedule in step(), drive the targets ourselves
+                robot.target_wheel_speed, robot.target_yaw = schedule_target(schedule, t)
+                obs, reward, terminated, _, _ = BaseWorldEnv.step(robot, action)
             else:
-                # Env01-v3 schedule runs on episode time; ignore the 6000-step truncation
-                obs, _, terminated, _, _ = env.step(action)
+                # ReferenceBaselineTrainingEnv schedule runs on episode time; ignore the 6000-step truncation
+                obs, reward, terminated, _, _ = env.step(action)
+
+            rewards.append(float(reward))
+            speed_errors.append(abs(robot.target_wheel_speed - robot.get_wheel_speed()))
+            yaw_errors.append(yaw_error(robot, env_id))
+            pitches.append(abs(np.degrees(robot.get_pitch())))
 
             if step % frame_every == 0:
                 writer.append_data(annotate(env.render(), [
                     f"t = {t:5.1f} s   falls: {falls}",
                     f"speed  {robot.get_wheel_speed():6.1f}  target {robot.target_wheel_speed:6.1f}",
-                    f"yaw    {robot.get_wheel_yaw():6.1f}  target {robot.target_yaw:6.1f}",
+                    yaw_status_line(robot, env_id),
                     f"pitch  {np.degrees(robot.get_pitch()):6.1f} deg",
                 ]))
 
@@ -138,7 +214,16 @@ def video(model: str, output: str, duration: float, schedule: str, seed: int):
                 obs, _ = env.reset()
 
     env.close()
-    click.echo(f"Wrote {output}: {duration:.0f}s, {falls} fall(s), schedule={schedule}")
+    return {
+        "duration_s": duration,
+        "falls": falls,
+        "mean_speed_error": float(np.mean(speed_errors)),
+        "mean_yaw_error": float(np.mean(yaw_errors)),
+        "mean_abs_pitch_deg": float(np.mean(pitches)),
+        # each env scores with its own reward function (see its _get_reward)
+        "max_reward": max(rewards),
+        "total_reward": sum(rewards),
+    }
 
 
 @cli.command(help="Record the robustness test (same seeds, alternating block sides) as a video")
@@ -158,6 +243,7 @@ def blocks(model: str, output: str, episodes: int, speed: int, seed: int):
     survived = {"front": 0, "back": 0}
     played = {"front": 0, "back": 0}
 
+    Path(output).parent.mkdir(parents=True, exist_ok=True)
     with imageio.get_writer(output, fps=VIDEO_FPS) as writer:
         for ep in range(episodes):
             side = "front" if ep % 2 == 0 else "back"

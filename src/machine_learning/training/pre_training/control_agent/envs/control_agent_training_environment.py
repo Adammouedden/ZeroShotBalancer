@@ -1,21 +1,33 @@
+import math
 import numpy as np
 
-from .env01_v1 import Env01
+from gymnasium.spaces import Box
+from robot_environments.base_world_env import BaseWorldEnv
 
 """
 Env for training on moving backward and forward
 """
 
-DEFAULT_REWARD_WEIGHTS = dict(alive=0.6, pitch=0.05, speed_error=0.15, lean=10.0, yaw=0.007)
+DEFAULT_REWARD_WEIGHTS = dict(alive=0.6, pitch=0.05, speed_error=0.15, lean=5.0, direction_error=0.15)
 
-class Env01_v3(Env01):
+class ControlAgentTrainingEnv(BaseWorldEnv):
     def __init__(self, reward_weights=None, **kwargs):
 
         # Modularize reward weights and track reward terms separately
         self.reward_weights = {**DEFAULT_REWARD_WEIGHTS, **(reward_weights or {})}
         self.reward_terms = {}
 
-        Env01.__init__(self, **kwargs)
+        BaseWorldEnv.__init__(self, **kwargs)
+
+        # base observation space is 6 values with no heading signal at all - extend it
+        # with sin/cos of current heading and sin/cos of heading error, so the policy
+        # can actually condition its turning on where the target is (see _get_obs)
+        base_low, base_high = self.observation_space.low, self.observation_space.high
+        self.observation_space = Box(
+            np.concatenate([base_low, [-1.0, -1.0, -1.0, -1.0]]),
+            np.concatenate([base_high, [1.0, 1.0, 1.0, 1.0]]),
+            dtype=np.float32,
+        )
 
         self.delay_target_speed = 0.0
         self.delay_target_yaw = 0.0
@@ -25,6 +37,21 @@ class Env01_v3(Env01):
     def get_pitch(self) -> float:
         p = super().get_pitch()
         return p + self.pitch_offset
+
+    def _direction_error(self) -> float:
+        # signed shortest-path heading error, wrapped to (-pi, pi]
+        return (self.target_yaw - self.get_yaw() + math.pi) % (2 * math.pi) - math.pi
+
+    def _get_obs(self):
+        obs = BaseWorldEnv._get_obs(self)
+        direction_error = self._direction_error()
+        heading_obs = np.array([
+            math.sin(self.get_yaw()),
+            math.cos(self.get_yaw()),
+            math.sin(direction_error),
+            math.cos(direction_error),
+        ], dtype=np.float32)
+        return np.concatenate([obs, heading_obs])
 
     def step(self, a):
         if self.data.time > 5.5:
@@ -37,7 +64,7 @@ class Env01_v3(Env01):
             self.target_wheel_speed = self.delay_target_speed
 
 
-        ob, reward, terminated, truncated, info = Env01.step(self, a)
+        ob, reward, terminated, truncated, info = BaseWorldEnv.step(self, a)
         info["reward_terms"] = self.reward_terms
 
         return ob, reward, terminated, truncated, info
@@ -54,9 +81,12 @@ class Env01_v3(Env01):
         else:
             self.delay_target_speed -= 10
 
+        self.delay_target_yaw = self.np_random.uniform(low=0.0, high=2.0* np.pi)
+        self.target_yaw = self.delay_target_yaw
+
         # 2 degrees +/-
         self.pitch_offset = self.np_random.uniform(low=-0.0349066, high=0.0349066)
-        return Env01.reset_model(self)
+        return BaseWorldEnv.reset_model(self)
 
     def _get_reward(self):
         pitch = self.get_pitch()
@@ -70,8 +100,8 @@ class Env01_v3(Env01):
         dv_n = max_dv / MAX_DV
         dv_s = abs(dv_n)
 
-        # Differences in yaw
-        dyd = self.target_yaw - self.get_wheel_yaw()
+        # Differences in direction (Direction/Heading Error)
+        direction_error = self._direction_error()
 
         # Reward Shaping: What direction should the agent lean in to remain upright?
         lean_dir = 0.0
@@ -94,7 +124,7 @@ class Env01_v3(Env01):
             "pitch": -1 * self.reward_weights["pitch"] * abs(pitch),
             "speed_error": -1 * self.reward_weights["speed_error"] * dv_s,
             "lean": lean_dir * pitch * self.reward_weights["lean"] * dv_s,
-            "yaw": -1 * self.reward_weights["yaw"] * abs(dyd)
+            "direction_error": -1 * self.reward_weights["direction_error"] * abs(direction_error)
         }
 
         return sum(self.reward_terms.values())

@@ -4,7 +4,6 @@ import logging
 import numpy as np
 import os
 import stable_baselines3
-import sys
 import stable_baselines3.common
 import stable_baselines3.common.base_class
 import torch
@@ -24,8 +23,6 @@ from stable_baselines3.common.noise import NormalActionNoise
 # while not called directly, we need to import this so the environments are registered
 import envs
 
-# visibility/ is shared across baselines and lives one level up in training/
-sys.path.append(str(Path(__file__).resolve().parent.parent))
 from visibility.reward_visibility import RewardTermsCallback
 
 logging.basicConfig(level=logging.INFO, format='%(message)s')
@@ -85,7 +82,7 @@ def algorithm_factory(algorithm_name: str, env: gym.Env) -> BaseAlgorithm:
 
 
 @click.command(name="convert", help="Convert a PyTorch model to ONNX format")
-@click.option('-e', '--environment', required=True, type=str, help="id of Gymnasium environment (eg; Env01-v1)")
+@click.option('-e', '--environment', required=True, type=str, help="id of Gymnasium environment (eg; ReferenceBaselineTrainingEnv)")
 @click.pass_context
 def convert(ctx: dict, environment: str):
     """ Converts model to ONNX format """
@@ -135,7 +132,7 @@ def convert(ctx: dict, environment: str):
 
 
 @click.command(name="test", help="Test the current model")
-@click.option('-e', '--environment', required=True, type=str, help="id of Gymnasium environment (eg; Env01-v1)")
+@click.option('-e', '--environment', required=True, type=str, help="id of Gymnasium environment (eg; ReferenceBaselineTrainingEnv)")
 @click.option('--show-io', is_flag=True, default=False, help="log model inputs and outputs")
 @click.option('--show-i', is_flag=True, default=False, help="log model inputs to std out in Python array syntax")
 @click.pass_context
@@ -184,7 +181,7 @@ def test(ctx: dict, environment: str, show_io: bool, show_i: bool):
 
 
 @click.command(name="test-onnx", help="Test an ONNX model")
-@click.option('-e', '--environment', required=True, type=str, help="id of Gymnasium environment (eg; Env01-v1)")
+@click.option('-e', '--environment', required=True, type=str, help="id of Gymnasium environment (eg; ReferenceBaselineTrainingEnv)")
 @click.option('--show-io', is_flag=True, default=False, help="log model inputs and outputs")
 @click.pass_context
 def test_onnx(ctx: dict, environment: str, show_io: bool):
@@ -235,7 +232,7 @@ def test_onnx(ctx: dict, environment: str, show_io: bool):
 
 
 @click.command(name="test-tflite", help="Test a tflite model")
-@click.option('-e', '--environment', required=True, type=str, help="id of Gymnasium environment (eg; Env01-v1)")
+@click.option('-e', '--environment', required=True, type=str, help="id of Gymnasium environment (eg; ReferenceBaselineTrainingEnv)")
 @click.option('--show-io', is_flag=True, default=False, help="log model inputs and outputs")
 @click.option('--show-i', is_flag=True, default=False, help="log model inputs to std out in Python array syntax")
 @click.pass_context
@@ -289,7 +286,7 @@ def test_tflite(ctx: dict, environment: str, show_io: bool, show_i: bool):
 
 
 @click.command(name="test-tflite-quant", help="Test a quantized tflite model")
-@click.option('-e', '--environment', required=True, type=str, help="id of Gymnasium environment (eg; Env01-v1)")
+@click.option('-e', '--environment', required=True, type=str, help="id of Gymnasium environment (eg; ReferenceBaselineTrainingEnv)")
 @click.pass_context
 def test_tflite_quant(ctx: dict, environment: str):
     """ Test a tflite model by running in MuJoCo interactively """
@@ -398,7 +395,7 @@ def read_from_arduino(ser: "serial.Serial") -> str:
 
 
 @click.command(name="test-tflite-arduino", help="Test a quantized tflite model on the arduino")
-@click.option('-e', '--environment', required=True, type=str, help="id of Gymnasium environment (eg; Env01-v1)")
+@click.option('-e', '--environment', required=True, type=str, help="id of Gymnasium environment (eg; ReferenceBaselineTrainingEnv)")
 @click.pass_context
 def test_tflite_arduino(ctx: dict, environment: str):
     """ Test a tflite model by running in MuJoCo interactively """
@@ -502,7 +499,7 @@ def test_tflite_arduino(ctx: dict, environment: str):
 
 
 @click.command(name="train", help="Train a model with a given environment")
-@click.option('-e', '--environment', required=True, type=str, help="id of Gymnasium environment (eg; Env01-v1)")
+@click.option('-e', '--environment', required=True, type=str, help="id of Gymnasium environment (eg; ReferenceBaselineTrainingEnv)")
 @click.option('-t', '--timesteps', default=int(1e10), type=int, help="max training timesteps (default: run until stopped)")
 @click.pass_context
 def train(ctx: dict, environment: str, timesteps: int):
@@ -563,7 +560,7 @@ def train(ctx: dict, environment: str, timesteps: int):
     )
 
     callbacks = [checkpoint_callback, eval_callback]
-    # only envs with configurable reward weights (currently Env01-v3) expose reward terms
+    # only envs with configurable reward weights (currently ReferenceBaselineTrainingEnv) expose reward terms
     reward_weights = getattr(env.unwrapped, "reward_weights", None)
     if reward_weights is not None:
         callbacks.append(RewardTermsCallback(reward_weights))

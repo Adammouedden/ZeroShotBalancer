@@ -4,17 +4,17 @@ import numpy as np
 
 from scipy.spatial.transform import Rotation
 
-from .RobotBaseEnv import RobotBaseEnv, WHEEL_SPEED_DELTA_MAX
-from .env03_v1 import Env03
+from robot_environments.RobotBaseEnv import RobotBaseEnv, WHEEL_SPEED_DELTA_MAX
+from .reference_baseline_thrown_blocks import ThrownBlocksEnv
 
 """
 Block fired continuously targeted at the front (or back) only. This is a better
-training env than Env03_v1 as it is consistently the worst case.
+training env than ThrownBlocksEnv as it is consistently the worst case.
 """
-class Env03_v2(Env03):
+class ReferenceBaselineFineTuning(ThrownBlocksEnv):
 
     def __init__(self, **kwargs):
-        Env03.__init__(self, **kwargs)
+        ThrownBlocksEnv.__init__(self, **kwargs)
 
         # Choose a side and continuously fire blocks
         # that side. If alternating sides during a session,

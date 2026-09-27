@@ -7,10 +7,10 @@ from scipy.spatial.transform import Rotation
 from .RobotBaseEnv import RobotBaseEnv, WHEEL_SPEED_DELTA_MAX
 
 
-class Env01(RobotBaseEnv):
+class BaseWorldEnv(RobotBaseEnv):
 
     def __init__(self, **kwargs):
-        RobotBaseEnv.__init__(self, 'env01_v1.xml', **kwargs)
+        RobotBaseEnv.__init__(self, 'base_world_env.xml', **kwargs)
 
     def step(self, a):
         reward = self._get_reward()
