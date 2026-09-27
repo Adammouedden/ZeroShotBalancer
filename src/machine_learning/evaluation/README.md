@@ -2,6 +2,21 @@
 
 This directory contains all code for evaluating the quality of RL trained policies that control the Zero-Shot Balancer.
 
+Currently, we only have a very basic system of evaluations. One easy and solved evaluation which involves only linear movement
+Another more difficult evaluation which is twice as long and contains more varied changes in speed and yaw.
+
+Curiously, because we always test on the same time interval, speeds, and yaws, the reference-baseline model performs deterministically (starting from test-03).
+
+### Developer Log:
+
+Test-01: only mixed_schedule.json existed
+
+Test-02: mixed_schedule_hard.json was created
+
+Test-03: 
+* evaluate.py was extended to give a 1 second grace period after every fall, since the agents would begin with a non-zero speed which caused rapid bursts of falls when the grace period was only 15 ms 
+* compare.py was created, which gives a parallelized A\B test of any 2 models (in SB3 zip file format) 
+
 The video evaluation is a test using a default MJCF environment file, with standard physical parameters. The test is a measure of falls for the duration of the evaluation as the agent must match target speeds and target yaws as they change dynamically. They change based on an input json schedule, one such example is mixed_schedule.json.
 
 The format for this json is:
@@ -20,7 +35,7 @@ uv run evaluation/evaluate.py video -e ControlAgentTrainingEnv \
 
 ## Comparing two models (`compare.py`)
 
-`compare.py` records two models on the same schedule, then saves both videos and a table of metrics. By default it compares the reference baseline against the control agent (both `best_model.zip`) on `mixed_schedule.json`.
+`compare.py` records two models on the same schedule in parallel (one process per model), then saves both videos, a side-by-side video and a table of metrics. By default it compares the reference baseline against the control agent (both `best_model.zip`) on `mixed_schedule.json`.
 
 Run from this folder (`evaluation/`):
 
@@ -57,6 +72,7 @@ Each run creates the next numbered folder, `comparison_testing/test-01/`, `test-
 comparison_testing/test-NN/
 ├── model_a.mp4      # video of model A, with a speed / yaw / pitch readout
 ├── model_b.mp4
+├── side_by_side.mp4 # model A (left) and model B (right) in sync, labelled at the bottom
 ├── schedule.json    # copy of the schedule used
 └── results.json     # model path, env and metrics for each model
 ```

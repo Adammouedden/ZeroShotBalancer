@@ -89,6 +89,7 @@ def robustness(models: tuple[str, ...], episodes: int, seed: int):
 
 BUILTIN_SCHEDULE = "env01"
 LAST_ENTRY_HOLD = 2.0  # seconds the final schedule entry is held before the clip ends
+RESET_GRACE = 1.0  # seconds targets are held at 0 after a fall reset, like the start of a training episode
 
 
 def schedule_path(name: str) -> Path:
@@ -158,14 +159,17 @@ def annotate(frame: np.ndarray, lines: list[str]) -> np.ndarray:
 @click.option('-e', '--env', 'env_id', type=click.Choice(VIDEO_ENVS), default=VIDEO_ENVS[0],
               help="environment to record in (match the one the model was trained on)")
 @click.option('--seed', default=0)
-def video(model: str, output: str, duration: float | None, schedule_name: str, env_id: str, seed: int):
+@click.option('--reset-grace', default=RESET_GRACE,
+              help="seconds targets are held at 0 after a fall reset (0 = resume the schedule immediately)")
+def video(model: str, output: str, duration: float | None, schedule_name: str, env_id: str, seed: int,
+          reset_grace: float):
     schedule = None if schedule_name == BUILTIN_SCHEDULE else load_schedule(schedule_name)
-    results = record_video(model, output, schedule, env_id, duration, seed)
+    results = record_video(model, output, schedule, env_id, duration, seed, reset_grace)
     click.echo(f"Wrote {output}: {results['duration_s']:.0f}s, {results['falls']} fall(s), schedule={schedule_name}")
 
 
 def record_video(model: str, output: str, schedule: list[list[float]] | None, env_id: str,
-                 duration: float | None = None, seed: int = 0) -> dict:
+                 duration: float | None = None, seed: int = 0, reset_grace: float = RESET_GRACE) -> dict:
     """
     Record a clip following `schedule` (None = the env's built-in schedule) and return tracking metrics.
     """
@@ -181,6 +185,7 @@ def record_video(model: str, output: str, schedule: list[list[float]] | None, en
     frame_every = round(1 / (VIDEO_FPS * CONTROL_DT))
     total_steps = round(duration / CONTROL_DT)
     falls = 0
+    last_reset = -reset_grace  # no grace period at the start of the clip
     speed_errors, yaw_errors, pitches, rewards = [], [], [], []
 
     Path(output).parent.mkdir(parents=True, exist_ok=True)
@@ -190,7 +195,8 @@ def record_video(model: str, output: str, schedule: list[list[float]] | None, en
             action, _ = policy.predict(obs, deterministic=True)
             if schedule is not None:
                 # bypass the env's built-in schedule in step(), drive the targets ourselves
-                robot.target_wheel_speed, robot.target_yaw = schedule_target(schedule, t)
+                in_grace = t - last_reset < reset_grace
+                robot.target_wheel_speed, robot.target_yaw = (0, 0) if in_grace else schedule_target(schedule, t)
                 obs, reward, terminated, _, _ = BaseWorldEnv.step(robot, action)
             else:
                 # ReferenceBaselineTrainingEnv schedule runs on episode time; ignore the 6000-step truncation
@@ -212,10 +218,12 @@ def record_video(model: str, output: str, schedule: list[list[float]] | None, en
             if terminated:
                 falls += 1
                 obs, _ = env.reset()
+                last_reset = t
 
     env.close()
     return {
         "duration_s": duration,
+        "reset_grace_s": reset_grace,
         "falls": falls,
         "mean_speed_error": float(np.mean(speed_errors)),
         "mean_yaw_error": float(np.mean(yaw_errors)),
