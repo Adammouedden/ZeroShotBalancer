@@ -20,7 +20,7 @@ uv run evaluation/evaluate.py video -e ControlAgentTrainingEnv \
 
 ## Comparing two models (`compare.py`)
 
-`compare.py` records two models on the same schedule, then saves both videos and a table of metrics. By default it compares the reference baseline against the control agent (both `best_model.zip`) on `mixed_schedule.json`.
+`compare.py` records two models on the same schedule in parallel (one process per model), then saves both videos, a side-by-side video and a table of metrics. By default it compares the reference baseline against the control agent (both `best_model.zip`) on `mixed_schedule.json`.
 
 Run from this folder (`evaluation/`):
 
@@ -57,6 +57,7 @@ Each run creates the next numbered folder, `comparison_testing/test-01/`, `test-
 comparison_testing/test-NN/
 ├── model_a.mp4      # video of model A, with a speed / yaw / pitch readout
 ├── model_b.mp4
+├── side_by_side.mp4 # model A (left) and model B (right) in sync, labelled at the bottom
 ├── schedule.json    # copy of the schedule used
 └── results.json     # model path, env and metrics for each model
 ```

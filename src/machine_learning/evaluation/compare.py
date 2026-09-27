@@ -4,14 +4,21 @@ Record two models on the same schedule and compare them. Defaults to the referen
   uv run compare.py                              # mixed_schedule.json -> comparison_testing/test-NN/
   uv run compare.py -s my_schedule.json          # custom schedule (looked up in this folder if not found)
   uv run compare.py -a path/a.zip -b path/b.zip  # any two models
+
+Both models are recorded in parallel, then stitched into side_by_side.mp4 (A left, B right).
 """
 import click
+import imageio
 import json
+import multiprocessing
+import numpy as np
 import shutil
 
+from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
+from PIL import Image, ImageDraw
 
-from evaluate import EVAL_DIR, TRAINING_DIR, VIDEO_ENVS, load_schedule, record_video, schedule_path
+from evaluate import EVAL_DIR, TRAINING_DIR, VIDEO_ENVS, VIDEO_FPS, load_schedule, record_video, schedule_path
 
 OUTPUT_ROOT = EVAL_DIR / "comparison_testing"
 
@@ -51,6 +58,21 @@ def infer_env(model: Path, env_id: str | None, flag: str) -> str:
     raise click.UsageError(f"can't tell which env {model} was trained in, pass {flag} ({' / '.join(VIDEO_ENVS)})")
 
 
+def label_frame(frame: np.ndarray, text: str) -> np.ndarray:
+    img = Image.fromarray(frame)
+    draw = ImageDraw.Draw(img)
+    draw.rectangle([0, img.height - 34, img.width, img.height], fill=(0, 0, 0))
+    draw.text((10, img.height - 28), text, fill=(255, 255, 255), font_size=18)
+    return np.asarray(img)
+
+
+def side_by_side(video_a: Path, video_b: Path, labels: tuple[str, str], output: Path):
+    with imageio.get_reader(video_a) as a, imageio.get_reader(video_b) as b, \
+            imageio.get_writer(output, fps=VIDEO_FPS) as writer:
+        for frame_a, frame_b in zip(a, b):
+            writer.append_data(np.hstack([label_frame(frame_a, labels[0]), label_frame(frame_b, labels[1])]))
+
+
 @click.command()
 @click.option('-a', '--model-a', type=click.Path(exists=True, dir_okay=False, path_type=Path),
               default=DEFAULT_MODEL_A, help="first model .zip (default: reference_baseline best_model.zip)")
@@ -72,11 +94,20 @@ def compare(model_a: Path, model_b: Path, env_a: str | None, env_b: str | None, 
     test_dir = next_test_dir()
     shutil.copy(schedule_path(schedule_name), test_dir / "schedule.json")
 
-    results = {}
-    for name, (model, env_id) in runs.items():
-        click.echo(f"Recording {name}: {model} in {env_id} ...")
-        results[name] = {"model": str(model), "env": env_id,
-                         **record_video(str(model), str(test_dir / f"{name}.mp4"), schedule, env_id, seed=seed)}
+    # one process per model; spawn so each gets its own MuJoCo renderer
+    with ProcessPoolExecutor(len(runs), mp_context=multiprocessing.get_context("spawn")) as pool:
+        futures = {}
+        for name, (model, env_id) in runs.items():
+            click.echo(f"Recording {name}: {model} in {env_id} ...")
+            futures[name] = pool.submit(record_video, str(model), str(test_dir / f"{name}.mp4"), schedule, env_id,
+                                        seed=seed)
+        results = {name: {"model": str(runs[name][0]), "env": runs[name][1], **f.result()}
+                   for name, f in futures.items()}
+
+    click.echo("Stitching side_by_side.mp4 ...")
+    side_by_side(test_dir / "model_a.mp4", test_dir / "model_b.mp4",
+                 tuple(f"{n}: {model.parent.name}/{model.stem}" for n, (model, _) in runs.items()),
+                 test_dir / "side_by_side.mp4")
 
     (test_dir / "results.json").write_text(json.dumps(results, indent=4))
 
