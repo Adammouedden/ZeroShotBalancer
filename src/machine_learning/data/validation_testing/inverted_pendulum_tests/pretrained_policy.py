@@ -10,12 +10,29 @@ DEFAULT_FILENAME = "invertedpendulum-v5-sac-expert.zip"
 
 
 def digest(path):
+    """Return the SHA-256 hex fingerprint of the file at path without changing it."""
     return hashlib.sha256(Path(path).read_bytes()).hexdigest()
 
 
 def prepare_policy(directory, checkpoint=None, repo=DEFAULT_REPO,
                    filename=DEFAULT_FILENAME, revision="main", vecnormalize=None, algorithm="SAC"):
-    """Resolve one immutable Hub revision and snapshot weights into this run."""
+    """Resolve and copy a frozen pendulum policy into a new run's policy folder.
+
+    Args:
+        directory: Existing run folder; its policy/ subfolder must not exist.
+        checkpoint: Local weights path, or None to download from Hugging Face.
+        repo, filename, revision: Hub source identifiers when downloading;
+            revision is resolved to an immutable commit before obtaining bytes.
+        vecnormalize: Optional saved observation-normalization file to copy.
+        algorithm: SAC or PPO, matching the supplied checkpoint.
+
+    Returns:
+        Paths, hashes and provenance metadata for SB3Controller. Downloading
+        needs network access; local input only copies files. No training occurs.
+
+    The environment labels here are pendulum-specific. The self-balancer uses
+    runner.policy_metadata() for its own PPO and shares SB3Controller below.
+    """
     if algorithm not in {"SAC", "PPO"}:
         raise ValueError(f"Unsupported policy algorithm: {algorithm}")
     metadata = {"algorithm": algorithm, "deterministic": True, "device": "cpu",
@@ -49,9 +66,17 @@ def prepare_policy(directory, checkpoint=None, repo=DEFAULT_REPO,
 
 
 class SB3Controller:
-    """The same weights and normalization are used at every motor strength."""
+    """Frozen SAC/PPO inference shared by pendulum and self-balancer evaluations."""
 
     def __init__(self, metadata, env):
+        """Load a hashed checkpoint on CPU and validate its spaces against env.
+
+        metadata supplies algorithm, checkpoint_path/checkpoint_sha256 and
+        optional VecNormalize path/hash. env supplies action/observation spaces
+        and, if needed, the normalization wrapper's environment. Reject changed
+        artifacts or mismatched shapes/bounds with ValueError. Normalization
+        statistics are frozen; compatibility notes retain a known loader warning.
+        """
         import numpy as np
         import stable_baselines3
         from stable_baselines3 import PPO, SAC
@@ -95,6 +120,11 @@ class SB3Controller:
         self.versions = {"stable_baselines3": stable_baselines3.__version__, "torch": torch.__version__}
 
     def predict(self, observation):
+        """Return a deterministic action for one observation with optional scaling.
+
+        Apply saved observation normalization when present; neither policy
+        weights nor normalization statistics are updated by this call.
+        """
         if self.normalizer is not None:
             observation = self.normalizer.normalize_obs(observation)
         action, _ = self.model.predict(observation, deterministic=True)

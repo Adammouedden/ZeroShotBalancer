@@ -9,6 +9,14 @@ from model_adapter import AXES, compile_root, configured_baseline, digest, numbe
 
 
 def axis_values(bound, config):
+    """Return sorted initial CoM offsets in meters, including endpoints and zero.
+
+    bound is one axis entry from calculate(); config supplies points or step_mm
+    (a scalar or per-axis dictionary). step_mm limits maximum initial spacing.
+    For a centered nominal CoM, 11 points span -100%..100% of the half-size in
+    20-percentage-point steps. This creates candidates; feasibility is checked
+    later. Raise ValueError if the requested count exceeds max_cases.
+    """
     low, high = bound["geometric"]
     step = config.get("step_mm")
     if isinstance(step, dict):
@@ -26,6 +34,19 @@ def axis_values(bound, config):
 
 
 def mutate(root, config, values):
+    """Apply one property case to a copy of an explicit-inertia XML tree.
+
+    Args:
+        root: Baseline ElementTree root; it is never changed in place.
+        config: Validated property request.
+        values: Axis-to-offset dictionary for CoM (meters), or a dictionary
+            mapping the scalar property name to its value in the stated units.
+
+    Returns:
+        (changed_root, physical_status), or (None, exclusion_status) when the
+        requested case is inadmissible. Compiles admitted cases and checks
+        effective model fields; this is not a policy rollout.
+    """
     root = copy.deepcopy(root)
     base = compile_root(root)
     prop = config["property"]
@@ -101,6 +122,13 @@ def mutate(root, config, values):
 
 
 def make_case(root, config, values, kind, directory, index):
+    """Build one manifest entry and write its XML only if screening admits it.
+
+    Takes a baseline XML root, validated config, property values, a kind label
+    (mutation/boundary/refinement), an existing output directory and integer ID.
+    Returns values/status plus an XML filename and hash for admitted cases.
+    Excluded entries retain reasons but have no XML or simulation result.
+    """
     changed, physical = mutate(root, config, values)
     case = {"id": f"case_{index:04d}", "values": {k: float(v) for k, v in values.items()}, "kind": kind, "physical": physical}
     if changed is not None:
@@ -111,6 +139,14 @@ def make_case(root, config, values, kind, directory, index):
 
 
 def generate(root, config, directory):
+    """Write initial cases and a manifest into a new directory; return manifest.
+
+    root is the configured baseline XML tree; config supplies the property,
+    axes, resolution and case budget. Joint CoM uses all axis combinations.
+    Add points just inside/on/outside relevant boundaries, then deduplicate.
+    This generates inputs only; runner.py performs rollouts and refinement.
+    Refuse an existing directory or a grid that exceeds max_cases.
+    """
     directory = Path(directory)
     directory.mkdir(parents=True, exist_ok=False)
     base = compile_root(root)
@@ -121,10 +157,14 @@ def generate(root, config, directory):
         grids = [axis_values(b, config) for b in bounds]
         if math.prod(map(len, grids)) > config["max_cases"]:
             raise ValueError("Joint grid exceeds max_cases; increase budget or step size")
+        # Joint tests combine axes; passing individual slices does not establish
+        # that every combination balances or satisfies the moment constraints.
         for values in itertools.product(*grids):
             candidates.append(({b["direction"]: v for b, v in zip(bounds, values)}, "mutation"))
         for b in bounds:
             eps = config.get("boundary_epsilon", max(1e-6, b["normalization_length_m"] * .001))
+            # Test both sides of a boundary. Inadmissible neighbours still get
+            # manifest entries so an exclusion is distinguishable from a fall.
             for limits in (b["geometric"], b["necessary_moment"]):
                 if limits is None:
                     continue

@@ -42,23 +42,42 @@ DEFAULT_REWARD_WEIGHTS = reference_module.DEFAULT_REWARD_WEIGHTS
 
 
 def digest(path):
+    """Read a file path and return its SHA-256 hex fingerprint; do not modify it."""
     return hashlib.sha256(Path(path).read_bytes()).hexdigest()
 
 
 def write_json(path, value):
+    """Write JSON-serializable value as UTF-8 at path; reject NaN/infinity.
+
+    The parent must exist. Overwrites the file and returns None.
+    """
     Path(path).write_text(json.dumps(value, indent=2, allow_nan=False) + "\n", encoding="utf-8")
 
 
 def numbers(values):
+    """Format a scalar or 1-D numeric sequence as space-separated MJCF text.
+
+    Use 17 significant digits to preserve double precision during XML copies.
+    """
     return " ".join(format(float(x), ".17g") for x in np.atleast_1d(values))
 
 
 def save_xml(root, path):
+    """Indent an ElementTree root in place and write UTF-8 XML to path.
+
+    The parent must exist; the destination is overwritten. Returns None.
+    """
     ET.indent(root)
     Path(path).write_bytes(ET.tostring(root, encoding="utf-8", xml_declaration=True))
 
 
 def flatten(path, seen=()):
+    """Read MJCF at path and return one XML root with includes expanded.
+
+    Include paths are relative to the containing XML file. seen tracks the
+    current include chain to reject cycles with ValueError. Source files stay
+    untouched; the returned tree is independent and can be modified safely.
+    """
     path = Path(path).resolve()
     if path in seen:
         raise ValueError("Cyclic XML include")
@@ -75,10 +94,19 @@ def flatten(path, seen=()):
 
 
 def compile_root(root):
+    """Compile an ElementTree root into an MjModel without writing a file.
+
+    MuJoCo compilation errors propagate; no time steps or rollouts occur here.
+    """
     return mujoco.MjModel.from_xml_string(ET.tostring(root, encoding="unicode"))
 
 
 def inertia_tensor(model, body):
+    """Return a body's 3x3 central inertia in body coordinates, in kg m^2.
+
+    model is compiled MuJoCo data and body is its integer body ID. Rotate the
+    stored principal moments from the inertial frame into the body frame.
+    """
     rotation = np.empty(9)
     mujoco.mju_quat2Mat(rotation, model.body_iquat[body])
     rotation = rotation.reshape(3, 3)
@@ -86,6 +114,14 @@ def inertia_tensor(model, body):
 
 
 def describe(model):
+    """Extract actual compiled robot properties into a JSON-ready dictionary.
+
+    Takes an MjModel and checks the supported box-chassis/two-wheel topology.
+    Returns dimensions in meters, masses in kg, inertia in kg m^2, and timing,
+    gravity, contact and actuator settings. Chassis size is reported as half
+    dimensions, while wheel thickness is full thickness. Unsupported chassis
+    shape/orientation or state/action counts raise ValueError.
+    """
     body = model.body("robot_body").id
     geom = int(model.body_geomadr[body])
     if (model.nq, model.nv, model.nu) != (9, 8, 2):
@@ -111,6 +147,14 @@ def describe(model):
 
 
 def explicit_baseline(source=WORLD):
+    """Create explicit inertials without changing the compiled reference physics.
+
+    source is the world XML path, whose includes are expanded. Returns
+    (converted_XML_root, original_MjModel); does not edit source files.
+    Copy every body's compiled mass, CoM, principal moments and orientation
+    before selecting inertiafromgeom=auto. Raise ValueError if the supported
+    numeric model-array comparison detects a change after conversion.
+    """
     root = flatten(source)
     original = compile_root(root)
     describe(original)
@@ -133,6 +177,12 @@ def explicit_baseline(source=WORLD):
 
 
 def compare_models(a, b):
+    """Compare exposed numeric arrays of two compiled MjModels with tolerances.
+
+    Return {array_name: maximum_absolute_difference_or_shape_marker}; an empty
+    dictionary means these arrays agree. This does not compare every scalar or
+    nested option field, and is not a substitute for trajectory comparisons.
+    """
     differences = {}
     for name in dir(a):
         if name.startswith("_"):
@@ -150,6 +200,16 @@ def configured_baseline(root, settings):
     A resized body is treated as uniform-density geometry and its central inertia
     is regenerated. Wheel attachment follows radius/track; chassis bottom remains
     at the original local height. No mutation of the training XMLs.
+
+    Args:
+        root: Explicit-inertia baseline ElementTree root, copied before editing.
+        settings: Optional dimension/mass overrides. Chassis sizes and wheel
+            thickness are full dimensions in meters; masses are kilograms.
+
+    Returns:
+        A new XML root, compiled and checked for basic chassis/wheel clearance.
+        Raises ValueError for unsupported settings, nonpositive dimensions or
+        failed clearance. This does not certify manufacturing feasibility.
     """
     allowed = {"chassis_size_m", "chassis_mass_kg", "wheel_radius_m", "wheel_thickness_m", "wheel_mass_kg", "track_width_m"}
     if set(settings) - allowed:
@@ -208,6 +268,13 @@ def configured_baseline(root, settings):
 class NeutralEnv(BaseWorldEnv):
     """Versioned neutral reset; inherited policy observations and action semantics."""
     def __init__(self, scene, initial_pitch_rad=0.02, clearance_m=0.002):
+        """Load an XML path for headless evaluation with the original policy spaces.
+
+        initial_pitch_rad is the symmetric reset pitch bound; clearance_m is
+        the initial gap above floor contact. Store both for seeded resets.
+        One control action advances 250 physics steps (5 ms for this world).
+        Construction loads a model; it does not train a policy.
+        """
         utils.EzPickle.__init__(self, str(scene), initial_pitch_rad, clearance_m)
         self.initial_pitch_rad = initial_pitch_rad
         self.clearance_m = clearance_m
@@ -219,14 +286,23 @@ class NeutralEnv(BaseWorldEnv):
         self.target_wheel_speed = self.target_yaw = 0.0
 
     def _set_action_space(self):
+        """Set and return two normalized wheel-speed-increment actions in [-1, 1]."""
         self.action_space = Box(-1.0, 1.0, shape=(2,), dtype=np.float32)
         return self.action_space
 
     def get_pitch(self):
+        """Return chassis X Euler angle in radians using the correct quaternion order."""
         q = self.data.body("robot_body").xquat
         return float(Rotation.from_quat(q[[1, 2, 3, 0]]).as_euler("xyz")[0])
 
     def reset_model(self):
+        """Place the robot above the floor and return the initial policy observation.
+
+        Gymnasium reset(seed=...) supplies self.np_random. Sample pitch/yaw,
+        clear velocities and derivative history, and set speed/yaw targets to
+        zero. Geometry support determines placement even for a resized robot.
+        Mutates simulator state; it does not change the model's physical values.
+        """
         qpos = self.init_qpos.copy()
         qpos[:3] = 0
         pitch = self.np_random.uniform(-self.initial_pitch_rad, self.initial_pitch_rad)

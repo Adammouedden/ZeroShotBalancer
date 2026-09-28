@@ -28,12 +28,23 @@ from pretrained_policy import SB3Controller
 
 
 def policy_metadata(checkpoint):
+    """Return path/hash and CPU deterministic-PPO settings for a local checkpoint.
+
+    Reads checkpoint bytes to fingerprint them; does not load or train a model.
+    """
     return {"algorithm": "PPO", "checkpoint_path": str(Path(checkpoint).resolve()),
             "checkpoint_sha256": digest(checkpoint), "deterministic": True, "device": "cpu",
             "normalization": "RobotBaseEnv observation scaling; no VecNormalize"}
 
 
 def metrics_valid(env, observation, action, previous_time):
+    """Return numerical-anomaly labels for the latest control-step endpoint.
+
+    env supplies MuJoCo state; observation/action are the latest policy arrays;
+    previous_time is simulator time before the step, in seconds. An empty list
+    means the finite-value, time-advance and warning-counter checks passed.
+    This does not classify falls, physical plausibility or large finite values.
+    """
     flags = []
     for name, value in (("qpos", env.data.qpos), ("qvel", env.data.qvel), ("qacc", env.data.qacc),
                         ("observation", observation), ("action", action), ("actuator_force", env.data.actuator_force)):
@@ -47,6 +58,24 @@ def metrics_valid(env, observation, action, previous_time):
 
 
 def trial(env, controller, config, seed, trace_path):
+    """Run one seed's cumulative simulated-time budget and return its metrics.
+
+    Args:
+        env: NeutralEnv instance; reset and advanced here, closed by the caller.
+        controller: Frozen controller exposing predict(observation).
+        config: Duration and optional diagnostic thresholds in validated units.
+        seed: Nonnegative initial-reset seed; later reset seeds are derived.
+        trace_path: JSONL destination for per-control-step state/action records.
+
+    Returns:
+        Dictionary with numerical status, separate review flags and balance,
+        simulated duration, falls/resets, peak measurements and timing.
+
+    Falls reset the episode to complete the cumulative budget but fail full-
+    duration balance. Numerical anomalies can end a trial early. Review limits
+    are heuristics; observations cover control endpoints, not every substep.
+    No policy updates occur. Invalid time budgets/thresholds raise ValueError.
+    """
     duration = config["seconds_per_seed"]
     total_steps = round(duration / env.dt)
     if total_steps < 1 or not math.isclose(total_steps * env.dt, duration, abs_tol=1e-9):
@@ -106,6 +135,8 @@ def trial(env, controller, config, seed, trace_path):
                     review.add(threshold)
             limits = np.max(np.abs(env.model.actuator_forcerange), axis=1)
             saturated += int(np.any(np.abs(env.data.actuator_force) >= limits * .999))
+            # A fall is a controller outcome, not automatically a physics error.
+            # True body tilt also catches orientations hidden by one Euler angle.
             fell = bool(terminated or tilt > math.radians(50))
             trace.write(json.dumps({"step": completed, "elapsed_s": completed * env.dt, "episode": resets,
                 "observation": obs.tolist(), "action": action.tolist(), "qpos": env.data.qpos.tolist(),
@@ -135,7 +166,13 @@ def trial(env, controller, config, seed, trace_path):
 
 
 class LegacyCopy(ReferenceBaselineTrainingEnv):
+    """Reference training behaviour with an injected scene path for paired checks."""
     def __init__(self, scene):
+        """Load scene (an XML path) with the reference rewards, reset and controls.
+
+        Unlike NeutralEnv, this retains changing commands and the legacy reset
+        so original-versus-converted XML comparisons use the same reference.
+        """
         # Match the renamed reference initialization, injecting only the XML path.
         self.reward_weights = dict(DEFAULT_REWARD_WEIGHTS)
         self.reward_terms = {}
@@ -144,6 +181,14 @@ class LegacyCopy(ReferenceBaselineTrainingEnv):
 
 
 def reference_check(job):
+    """Compare original and converted reference trajectories using the same PPO.
+
+    job supplies source/converted XML paths, policy metadata and config seeds/
+    duration. Return paired per-seed metrics and constructor warnings. Matching
+    resets include the legacy global NumPy RNG. Assert observation/action/state
+    agreement and matching falls; propagate errors if equivalence fails.
+    Closes both environments. This is separate from neutral balance qualification.
+    """
     rows = []
     with warnings.catch_warnings(record=True) as setup_warnings:
         warnings.simplefilter("always")
@@ -188,6 +233,14 @@ def reference_check(job):
 
 
 def worker(job):
+    """Execute a serialized reference or case job inside a child process.
+
+    job is a request dictionary written by execute_job(): either paired XMLs
+    plus response path, or one XML/hash, case ID and output directory; both
+    include config and policy metadata. Write reference results or flush one
+    JSONL result per seed plus traces. Close the case environment and return
+    None. Exceptions propagate so the parent can record a worker failure.
+    """
     if job.get("type") == "reference":
         write_json(job["response"], reference_check(job))
         return
@@ -209,6 +262,14 @@ def worker(job):
 
 
 def execute_job(job, directory, timeout, on_update=None):
+    """Run a job in an isolated process with a wall-clock timeout in seconds.
+
+    Create directory (must be new), write a request JSON and capture stdout/
+    stderr in worker.log. job is copied before adding the resolved directory.
+    Optionally call the zero-argument on_update callback while waiting. Return
+    completed/worker_error/timeout metadata, not physics or balance results.
+    Kill an overdue child while retaining its already-written evidence.
+    """
     directory = Path(directory)
     directory.mkdir(parents=True, exist_ok=False)
     job = {**job, "directory": str(directory.resolve())}
@@ -235,6 +296,11 @@ def execute_job(job, directory, timeout, on_update=None):
 
 
 def selected_directory(directory):
+    """Return the selected retry Path, or the original case directory by default.
+
+    Reads selected_attempt.json when present and rejects paths outside the
+    original directory. Does not move, merge or delete any attempt's files.
+    """
     directory = Path(directory).resolve()
     selection = directory / "selected_attempt.json"
     if selection.exists():
@@ -246,6 +312,11 @@ def selected_directory(directory):
 
 
 def read_rows(directory):
+    """Return parsed JSONL rows from a case's selected attempt, or [] if absent.
+
+    Skip malformed lines, including a last line a worker is still writing.
+    Full completeness is checked separately; partial data is not success.
+    """
     path = selected_directory(directory) / "results.jsonl"
     if not path.exists():
         return []
@@ -259,6 +330,13 @@ def read_rows(directory):
 
 
 def snapshot(directory, config):
+    """Copy the code, XML and checkpoint needed to identify/reproduce a run.
+
+    directory is an existing new run Path; config optionally supplies checkpoint
+    (absolute or relative to PROJECT). Writes sources/, policy.zip and provenance
+    with hashes and versions, then returns policy metadata for SB3Controller.
+    Raise ValueError if weights are unavailable; never select a fallback policy.
+    """
     target = directory / "sources"
     target.mkdir()
     sources = [*HERE.glob("*.py"), *REFERENCE.joinpath("envs").glob("*.py"),
@@ -288,6 +366,21 @@ def snapshot(directory, config):
 
 
 def run_experiment(config, output, workers=2):
+    """Generate, qualify and evaluate a complete property request.
+
+    Args:
+        config: Validated JSON settings, including seeds and refinement budget.
+        output: New experiment directory; existing results are never overwritten.
+        workers: Number of simultaneous case subprocesses (CLI permits 1-4).
+
+    Returns:
+        Resolved output Path, including when a qualification gate fails.
+        Callers must read status/report artifacts to determine completion.
+
+    Snapshot inputs, check reference conversion, then require every neutral
+    baseline seed to balance without numerical/review flags. Only then run
+    admitted cases and midpoint refinements, refreshing summaries as logs arrive.
+    """
     from reporting import summarize, refinement_candidates
     directory = Path(output).resolve()
     directory.mkdir(parents=True, exist_ok=False)
@@ -320,12 +413,19 @@ def run_experiment(config, output, workers=2):
     print("Neutral baseline qualified; starting cases", flush=True)
 
     def evaluate(case):
+        """Submit one manifest case using its saved XML/hash; return worker status."""
         job = {"xml": str(directory / "variants" / case["xml"]), "xml_sha256": case["sha256"],
                "policy": policy, "config": config, "case_id": case["id"]}
         return execute_job(job, directory / "tests" / case["id"], config["timeout_seconds"])
 
     (directory / "tests").mkdir()
     def run_cases(cases):
+        """Evaluate admitted manifest entries and update enclosing rows/statuses.
+
+        Excluded cases have no XML and are skipped. A thread pool supervises
+        subprocesses; summaries rebuild from flushed logs while jobs continue.
+        Mutates the enclosing experiment state and files; returns None.
+        """
         # Parent refreshes aggregate files after each flushed per-seed result.
         with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as pool:
             futures = {pool.submit(evaluate, case): case for case in cases if "xml" in case}
@@ -344,6 +444,9 @@ def run_experiment(config, output, workers=2):
                     summarize(directory, rows, manifest, config, statuses, "running")
                     previous_count = len(current)
     run_cases(manifest["cases"])
+    # Extra-case budget is shared across all transitions/axes, not per bracket.
+    # Candidates halve observed intervals until tolerance or this budget stops
+    # refinement. Every admitted new position runs all configured seeds.
     remaining = config["max_refinement_cases"]
     while remaining > 0:
         proposals = refinement_candidates(rows, manifest, config)[:min(remaining, max(1, workers))]

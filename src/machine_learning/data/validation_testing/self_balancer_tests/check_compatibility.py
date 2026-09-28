@@ -15,6 +15,22 @@ from variants import mutate
 
 
 def check(previous, output, case_ids):
+    """Compare current code with saved baseline and selected case trajectories.
+
+    Args:
+        previous: Path to an earlier complete run with policy, models and traces.
+        output: New Path for this check's snapshots, logs and results.
+        case_ids: Unique admitted case IDs from the earlier manifest; the
+            baseline is always checked, so [] requests baseline-only comparison.
+
+    Returns:
+        Summary dictionary also written to compatibility.json on success.
+        Fail on policy/model differences, incomplete trials or unequal traces.
+
+    This function DOES run new simulations and subprocesses, including paired
+    reference checks. It never rewrites previous. It checks selected cases only,
+    not the entire historical sweep or a continuous property range.
+    """
     previous, output = previous.resolve(), output.resolve()
     output.mkdir(parents=True, exist_ok=False)
     load = lambda name: json.loads((previous / name).read_text(encoding="utf-8"))

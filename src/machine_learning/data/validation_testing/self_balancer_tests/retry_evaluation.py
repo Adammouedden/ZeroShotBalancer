@@ -14,6 +14,19 @@ from runner import read_rows
 
 
 def retry_one(directory, case, status, seeds):
+    """Retry one incomplete case with its saved sources and dependency versions.
+
+    Args:
+        directory: Resolved experiment Path containing snapshots and requests.
+        case: Manifest entry identifying the original case folder.
+        status: Previous worker status to preserve in the returned history.
+        seeds: Required seed IDs for checking complete replacement output.
+
+    Create a new attempt folder and return status/history metadata. Verify saved
+    hashes and Python/package versions before launching. A completed attempt
+    with full seed coverage becomes selected_attempt.json; it may still contain
+    legitimate balance failures. Original traces are never deleted/overwritten.
+    """
     original = directory / "tests" / case["id"]
     job = json.loads((original / "request.json").read_text(encoding="utf-8"))
     index = 2
@@ -59,6 +72,13 @@ def retry_one(directory, case, status, seeds):
 
 
 def retry(directory, workers=2):
+    """Retry unfinished cases after a batch ends; return the number attempted.
+
+    directory identifies a completed/completed_with_errors experiment, and
+    workers limits concurrent retry processes. Cases with complete successful
+    worker output are skipped. Refresh aggregate reports as retries finish;
+    do not generate cases or extend refinement budgets. Reject a running batch.
+    """
     directory = Path(directory).resolve()
     load = lambda name: json.loads((directory / name).read_text(encoding="utf-8"))
     status, config, manifest = load("status.json"), load("config.json"), load("manifest.json")

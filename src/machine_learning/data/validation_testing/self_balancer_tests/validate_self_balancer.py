@@ -11,6 +11,17 @@ from variants import generate
 
 
 def main():
+    """Read command-line arguments and dispatch the requested validation operation.
+
+    Inputs come from sys.argv and, for property commands, a JSON config file.
+    inspect/calculate print or save data; generate writes XML inputs; run starts
+    policy trials; report rebuilds summaries. _worker is the internal subprocess
+    entry point, not an alternative public evaluation mode.
+
+    Return exit code 0 on success or 2 for an unsuccessful run. The module entry
+    point also converts ValueError/FileExistsError into readable CLI errors.
+    No command trains a policy; only run/_worker advance simulation here.
+    """
     parser = argparse.ArgumentParser(description=__doc__)
     commands = parser.add_subparsers(dest="command", required=True)
     for name in ("inspect", "calculate", "generate", "run"):

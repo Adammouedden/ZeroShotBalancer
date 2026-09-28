@@ -8,6 +8,7 @@ from model_adapter import write_json
 
 
 def grouped(rows):
+    """Group per-seed result dictionaries by case_id; return lists of original rows."""
     result = {}
     for row in rows:
         result.setdefault(row["case_id"], []).append(row)
@@ -15,6 +16,12 @@ def grouped(rows):
 
 
 def outcome(rows, seeds):
+    """Summarize one case only when its rows cover exactly the requested seeds.
+
+    Return (balance_count, numerical_valid_count, review_flagged_count), or None
+    for missing/duplicate seeds. Counts, rather than seed identities, determine
+    the outcome changes used for refinement.
+    """
     if sorted(r["seed"] for r in rows) != sorted(seeds):
         return None
     return (sum(bool(r["balance"]) for r in rows), sum(r["numerical"] == "valid_observed" for r in rows),
@@ -22,6 +29,14 @@ def outcome(rows, seeds):
 
 
 def transitions(rows, manifest, config):
+    """Return neighbouring completed cases whose aggregate outcomes differ.
+
+    rows contains per-seed results; manifest supplies values/case IDs; config
+    supplies axes and required seeds. In a joint grid, compare each axis while
+    holding the others fixed. Each returned bracket records endpoints, outcomes
+    and fixed coordinates. It is evidence of different sampled endpoints, not
+    proof of a unique threshold or monotonic behaviour between them.
+    """
     groups = grouped(rows)
     cases = [c for c in manifest["cases"] if outcome(groups.get(c["id"], []), config["seeds"]) is not None]
     directions = config["directions"] if config["property"] == "center_of_mass" else [config["property"]]
@@ -45,6 +60,14 @@ def transitions(rows, manifest, config):
 
 
 def refinement_candidates(rows, manifest, config):
+    """Propose untested midpoints of observed transitions, widest brackets first.
+
+    Takes per-seed rows, the current manifest and validated config. Returns
+    value dictionaries for make_case(); does not generate XML or run a policy.
+    CoM refine_to_mm is converted to meters; scalar refine_to uses base units.
+    Skip brackets at/below tolerance and already proposed points. The runner
+    applies the global extra-case budget and the generator screens feasibility.
+    """
     existing = {tuple((k, round(v, 13)) for k, v in sorted(c["values"].items())) for c in manifest["cases"]}
     candidates = []
     for b in transitions(rows, manifest, config):
@@ -55,6 +78,8 @@ def refinement_candidates(rows, manifest, config):
             tolerance /= 1000
         if b["high"] - b["low"] <= tolerance:
             continue
+        # Example: different outcomes at 60% and 80% propose 70%. Subsequent
+        # results can split either side again, including mixed-seed outcomes.
         values = {**b["fixed"], b["direction"]: (b["high"] + b["low"]) / 2}
         key = tuple((k, round(v, 13)) for k, v in sorted(values.items()))
         if key not in existing:
@@ -64,6 +89,14 @@ def refinement_candidates(rows, manifest, config):
 
 
 def grid_svg(path, manifest, groups, seeds):
+    """Write an SVG of the initial two-axis CoM grid; return None.
+
+    path is the destination Path; manifest defines the grid, groups maps case
+    IDs to result rows, and seeds defines full coverage. Colours show balance
+    counts or diagnostics, never physical certification. Excluded/unfinished
+    points have distinct labels. Boundary and refinement cases are not drawn.
+    Non-joint input returns without writing a figure.
+    """
     cases = [c for c in manifest["cases"] if c["kind"] == "mutation"]
     directions = manifest["config"]["directions"]
     if len(directions) != 2:
@@ -100,6 +133,20 @@ def grid_svg(path, manifest, groups, seeds):
 
 
 def summarize(directory, rows, manifest, config, statuses, state):
+    """Rebuild aggregate artifacts from currently available results; return None.
+
+    Args:
+        directory: Existing experiment folder whose summaries may be overwritten.
+        rows: Collected per-seed results from the selected worker attempts.
+        manifest: All generated cases, including exclusions and refinements.
+        config: Validated request specifying property, seeds and budgets.
+        statuses: Worker status dictionaries indexed by case ID (and baseline).
+        state: Requested batch state, such as running/completed/baseline_failed.
+
+    Writes JSONL, CSV, status, bounds, transition brackets, Markdown and an
+    optional joint SVG. Missing trials remain not_run; incomplete completion is
+    marked completed_with_errors. Raw worker logs and traces are not rewritten.
+    """
     directory = Path(directory)
     groups = grouped(rows)
     # Rebuilt from flushed per-test logs, so interrupted runs retain their evidence.

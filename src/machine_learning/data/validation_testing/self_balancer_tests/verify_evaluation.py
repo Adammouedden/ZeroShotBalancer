@@ -12,6 +12,17 @@ from runner import selected_directory
 
 
 def verify(directory):
+    """Audit a saved completed experiment without advancing a simulation.
+
+    directory is a run folder with snapshots, manifest, CSV/JSONL and traces.
+    Check hashes, seed coverage, baseline qualification, compiled CoM mutations,
+    finite trace states, zero targets and aggregate consistency. Compile saved
+    models for comparison, but do not load a controller or perform rollouts.
+
+    Return an audit dictionary and write verification.json. Assertion failures
+    identify inconsistent evidence. Current sources differing from the saved
+    snapshot are recorded, not treated as corruption of the saved experiment.
+    """
     directory = Path(directory).resolve()
     load = lambda name: json.loads((directory / name).read_text(encoding="utf-8"))
     config, manifest, provenance, status = (load(n) for n in ("config.json", "manifest.json", "provenance.json", "status.json"))

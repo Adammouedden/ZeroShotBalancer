@@ -8,14 +8,32 @@ FIELDS = {"profile", "property", "body", "direction", "directions", "sampling", 
 
 
 def validate_config(raw):
+    """Merge a user JSON dictionary with defaults and validate the request.
+
+    Args:
+        raw: User settings, such as property, model dimensions, axes and budget.
+            Distances use meters unless a setting explicitly ends in ``_mm``.
+
+    Returns:
+        A new configuration dictionary with defaults and a ``directions`` list,
+        even for a one-axis request. The input dictionary is not modified.
+
+    Raises:
+        ValueError: A field is unknown, unsupported, ambiguous or out of range.
+            Model dimension checks occur later in configured_baseline().
+    """
     unknown = set(raw) - FIELDS
     if unknown:
         raise ValueError(f"Unknown configuration fields: {sorted(unknown)}")
+    # c means configuration. These are defaults, not fixed physical limits:
+    # **raw comes last so the user's JSON overrides configurable settings.
     c = {"profile": "env01_neutral_compiled", "property": "center_of_mass", "body": "robot_body",
          "inertia_mode": "fixed_central", "search_extent": "geometry", "points": 11,
          "seconds_per_seed": 10, "seeds": list(range(5)), "model": {}, "max_cases": 400,
          "timeout_seconds": 180, "max_refinement_cases": 0, "initial_pitch_rad": .02,
          "clearance_m": .002, **raw}
+    # These checks describe implemented scope; changing a string in JSON cannot
+    # add a new robot topology or a moving-payload inertia model.
     if c["profile"] != "env01_neutral_compiled" or c["body"] != "robot_body":
         raise ValueError("Only the named neutral profile and chassis body are supported")
     if c["property"] not in PROPERTIES:
@@ -60,6 +78,21 @@ def validate_config(raw):
 
 
 def calculate(model, config):
+    """Calculate conditional property bounds without running the controller.
+
+    Args:
+        model: Compiled MuJoCo model of the configured reference robot.
+        config: Validated request from validate_config().
+
+    Returns:
+        Dictionary containing model information, per-axis/property bounds and
+        limitations. CoM intervals are meter offsets from the nominal chassis
+        CoM, in chassis coordinates. Other properties carry their own units.
+        Missing engineering caps are marked requires_input, not invented.
+
+    A necessary moment interval excludes impossible CoM/inertia combinations;
+    its interior is not a physical-realizability or balance guarantee.
+    """
     info = describe(model)
     prop = config["property"]
     result = {"property": prop, "configuration": info, "bounds": [],
@@ -68,14 +101,24 @@ def calculate(model, config):
     if prop == "center_of_mass":
         body = model.body("robot_body").id
         inertia = inertia_tensor(model, body)
+        # Inertia I measures rotational mass spread. Convert it to positional
+        # covariance C = trace(I)/(2m) * identity - I/m. Each diagonal C_ii is
+        # mass-weighted variance along that body axis, in square meters.
         covariance = np.trace(inertia) / (2 * model.body_mass[body]) * np.eye(3) - inertia / model.body_mass[body]
         half = np.array(info["chassis_half_size_m"])
         center = np.array(info["chassis_geom_center_m"])
         nominal = np.array(info["chassis_com_m"])
         for direction in config["directions"]:
             i = AXES[direction]
+            # For mass inside [center-half, center+half], a necessary condition
+            # is C_ii + (com_i-center_i)^2 <= half_i^2. Here "radius" means
+            # allowed distance from the box center, not the wheel radius.
             radius_squared = half[i]**2 - covariance[i, i]
+            # Avoid sqrt of a negative number; report no necessary interval
+            # below when the variance cannot fit inside this geometry.
             radius = math.sqrt(max(0, radius_squared))
+            # Subtract nominal to express absolute positions as CoM changes.
+            # Percentage = 100 * offset / half-size, not offset / nominal CoM.
             result["bounds"].append({"direction": direction, "axis": i, "units": "m offset from nominal CoM",
                 "geometric": [float(center[i] - half[i] - nominal[i]), float(center[i] + half[i] - nominal[i])],
                 "necessary_moment": None if radius_squared < 0 else [float(center[i] - radius - nominal[i]), float(center[i] + radius - nominal[i])],
@@ -86,6 +129,8 @@ def calculate(model, config):
                    "damping": float(model.dof_damping[model.joint('torso_l_wheel').dofadr[0]]),
                    "chassis_width": 2*info["chassis_half_size_m"][0], "chassis_depth": 2*info["chassis_half_size_m"][1],
                    "chassis_height": 2*info["chassis_half_size_m"][2], "wheel_radius": info["wheel_radius_m"]}[prop]
+        # Chassis width is limited by wheel clearance. Most other finite maxima
+        # need user-supplied search_range; motor 0..1 is an exploratory default.
         cap = info["track_width_m"] - info["wheel_thickness_m"] if prop == "chassis_width" else None
         interval = config.get("search_range", [0., 1.] if prop == "motor_strength" else ([0., cap] if cap else None))
         result["bounds"].append({"direction": prop, "nominal": nominal, "domain_lower": 0.,
@@ -97,6 +142,18 @@ def calculate(model, config):
 
 
 def feasibility(model, offsets):
+    """Screen a proposed chassis CoM displacement against geometry and inertia.
+
+    Args:
+        model: Compiled reference model supplying fixed mass/central inertia.
+        offsets: Three meter offsets [X, Y, Z] in the chassis body frame.
+
+    Returns:
+        Status, exclusion reasons and required/available variances in m^2.
+        Outside-support or moment violations are known_infeasible. Admitted
+        nonzero shifts are unverified; near-zero uses nominal_geometry_derived.
+        This function does not mutate the model or simulate balance.
+    """
     body = model.body("robot_body").id
     info = describe(model)
     center = np.array(info["chassis_geom_center_m"])
@@ -104,6 +161,8 @@ def feasibility(model, offsets):
     com = np.array(info["chassis_com_m"]) + offsets
     inertia = inertia_tensor(model, body)
     covariance = np.trace(inertia) / (2 * model.body_mass[body]) * np.eye(3) - inertia / model.body_mass[body]
+    # Maximum coordinate variance allowed by the proposed mean inside the box:
+    # (upper - mean) * (mean - lower). It shrinks toward zero at an edge.
     available = (center + half - com) * (com - center + half)
     reasons = []
     if np.any(com < center - half - 1e-12) or np.any(com > center + half + 1e-12):
