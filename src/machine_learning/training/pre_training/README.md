@@ -83,7 +83,7 @@ Restoring dyd, differences in left_wheel_velocity and right_wheel_velocity (l_wh
 ---
 ### Experiment 6:
 ---
-
+(Not done yet)
 #### If the agent is trained on an environment that target yaw at a set time interval (rather than once per episode), then it will generalize better to the evaluation environment that contains swapping target yaw
 
 Altering training code to contain random target_yaw swapping at set time intervals, making the training env more identically distributed to the evaluation env
@@ -91,7 +91,7 @@ Altering training code to contain random target_yaw swapping at set time interva
 ---
 ### Experiment 7:
 ---
-
+(Not done yet)
 #### If curriculum learning is introduced, then the agent can maximize one reward term at a time. 
 
 Introduce curriculum learning onto the [training environment](control_agent/envs/control_agent_training_environment.py) by splitting training into two phases. 

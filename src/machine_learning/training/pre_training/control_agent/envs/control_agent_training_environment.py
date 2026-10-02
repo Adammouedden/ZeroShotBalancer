@@ -35,7 +35,7 @@ YAW_TURN_TIMES = (2.0, 4.0, 5.0, 10.0, 15.0, 20.0, 25.0)
         self.target_wheel_speed = 0
 
         # between -10 and 10
-        self.delay_target_speed = self.np_random.uniform(low=-10.0, high=10)
+        self.delay_target_speed = self.rng.np_random.uniform(low=-10.0, high=10)
         # now between 10 to 20 or -20 to -10
         if self.delay_target_speed > 0:
             self.delay_target_speed += 10
@@ -43,13 +43,13 @@ YAW_TURN_TIMES = (2.0, 4.0, 5.0, 10.0, 15.0, 20.0, 25.0)
             self.delay_target_speed -= 10
 
         # 2 degrees +/-
-        self.pitch_offset = self.np_random.uniform(low=-0.0349066, high=0.0349066)
+        self.pitch_offset = self.rng.np_random.uniform(low=-0.0349066, high=0.0349066)
         ControlAgentBaseEnv.reset_model(self)
 
         # Headings are relative to the random direction the robot faces after reset, so "no turn" means no turn.
         # Each turn is a fresh random angle added to the previous heading, wrapped to [-pi, pi).
         self.start_yaw = self.get_yaw()
-        turns = self.np_random.uniform(low=-np.pi, high=np.pi, size=len(YAW_TURN_TIMES))
+        turns = self.rng.np_random.uniform(low=-np.pi, high=np.pi, size=len(YAW_TURN_TIMES))
         self.target_headings = (self.start_yaw + np.cumsum(turns) + np.pi) % (2 * np.pi) - np.pi
         self.target_yaw = self.start_yaw
 
@@ -57,8 +57,17 @@ YAW_TURN_TIMES = (2.0, 4.0, 5.0, 10.0, 15.0, 20.0, 25.0)
         return self._get_obs()
 
 """
+# Why these?
+DEFAULT_REWARD_WEIGHTS = dict(
+    alive=0.6,
+    pitch=0.05, 
+    speed_error=0.15, 
+    lean=5.0, 
+    direction_error=0.15, 
+    uneven_wheel_speed=0.007
+)
 
-DEFAULT_REWARD_WEIGHTS = dict(alive=0.6, pitch=0.05, speed_error=0.15, lean=5.0, direction_error=0.15, uneven_wheel_speed=0.007)
+SEED = 42
 
 class ControlAgentTrainingEnv(ControlAgentBaseEnv):
     def __init__(self, reward_weights=None, **kwargs):
@@ -73,6 +82,8 @@ class ControlAgentTrainingEnv(ControlAgentBaseEnv):
         self.delay_target_yaw = 0.0
 
         self.pitch_offset = 0.0
+
+        self.rng = np.random.default_rng(SEED)
 
     def get_pitch(self) -> float:
         p = super().get_pitch()
@@ -99,18 +110,18 @@ class ControlAgentTrainingEnv(ControlAgentBaseEnv):
         self.target_yaw = 0
 
         # between -10 and 10
-        self.delay_target_speed = self.np_random.uniform(low=-10.0, high=10)
+        self.delay_target_speed = self.rng.np_random.uniform(low=-10.0, high=10)
         # now between 10 to 20 or -20 to -10
         if self.delay_target_speed > 0:
             self.delay_target_speed += 10
         else:
             self.delay_target_speed -= 10
 
-        self.delay_target_yaw = self.np_random.uniform(low=-1*np.pi, high=np.pi)
+        self.delay_target_yaw = self.rng.np_random.uniform(low=-1*np.pi, high=np.pi)
         self.target_yaw = self.delay_target_yaw
 
         # 2 degrees +/-
-        self.pitch_offset = self.np_random.uniform(low=-0.0349066, high=0.0349066)
+        self.pitch_offset = self.rng.np_random.uniform(low=-0.0349066, high=0.0349066)
         return ControlAgentBaseEnv.reset_model(self)
 
 
@@ -146,7 +157,9 @@ class ControlAgentTrainingEnv(ControlAgentBaseEnv):
 
         # Punish non-smooth turning
         uneven_wheel_speed = abs(self.target_yaw - self.get_wheel_yaw())
-
+        
+        # TODO: Need to normalize per- reward term. Requires running std dev and mean
+        
         self.reward_terms = {
             "alive": self.reward_weights["alive"],
             "pitch": -1 * self.reward_weights["pitch"] * abs(pitch),
@@ -155,5 +168,7 @@ class ControlAgentTrainingEnv(ControlAgentBaseEnv):
             "direction_error": -1 * self.reward_weights["direction_error"] * abs(direction_error),
             "uneven_wheel_speed": -1 * self.reward_weights["uneven_wheel_speed"] * uneven_wheel_speed
         } # future plans are to change direction_error to: -1 * weight * (1 - cos(direction_error)) for smooth training with a maximum at 0
+
+        
 
         return sum(self.reward_terms.values())

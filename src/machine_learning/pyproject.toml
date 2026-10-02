@@ -18,7 +18,7 @@ dependencies = [
     "stable-baselines3>=2.9.0",
     "tensorboard>=2.21.0",
     "torch>=2.14.0",
-    "mujoco>=3.14.0"
+    "mujoco>=3.14.0",
 ]
 
 [project.optional-dependencies]
