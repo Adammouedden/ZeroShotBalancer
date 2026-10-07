@@ -37,7 +37,7 @@ logger.setLevel(logging.INFO)
 MODEL_DIR = "models"
 LOG_DIR = "logs"
 RECORDING_DIR = "movies"
-DEVICE = "cuda"
+DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 
 def algorithm_factory(algorithm_name: str, env: gym.Env) -> BaseAlgorithm:
     """
@@ -520,6 +520,9 @@ def train(ctx: dict, environment: str, timesteps: int):
         video_length=0,
         episode_trigger = lambda x: x % 50 == 0,
     )
+
+    # Experiment STR-105, Normalize observation variables
+    env = gym.wrappers.NormalizeObservation(env=env, epsilon=1e-8)
 
     logger.info(f"Starting training process")
     logger.info(f"Algorithm: {algorithm_name}")
