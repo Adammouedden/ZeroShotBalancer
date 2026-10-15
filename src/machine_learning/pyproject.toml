@@ -35,3 +35,8 @@ build-backend = "hatchling.build"
 # regardless of which folder the script is run from
 [tool.hatch.build.targets.wheel]
 packages = ["training/visibility", "training/robot_environments"]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+]

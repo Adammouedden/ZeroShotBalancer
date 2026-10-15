@@ -86,4 +86,4 @@ The standard Y cases deliberately avoid ±90°, where the `xyz` Euler representa
 
 ## Act
 
-The file [`test_control_agent_base_env.py`](../../../tests/robot_environments/test_control_agent_base_env.py)
+The file [`test_control_agent_base_env.py`](../../../tests/robot_environments/test_control_agent_base_env.py) contains all the unit tests illustrated above. Run it using `uv run pytest -v tests/robot_environments/test_control_agent_base_env.py` from `src/machine_learning`.
