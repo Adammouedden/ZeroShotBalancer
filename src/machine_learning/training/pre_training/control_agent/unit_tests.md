@@ -43,24 +43,46 @@ To further clarify the above with an example: the X-axis direction is $(1, 0, 0)
 
 This produces the second test vector below, $+90°$  X-axis rotation.
 
-#### Standard test vectors
-- Identity (no rotation): `[1, 0, 0, 0]`.\
-*In this case, the expected first angle is 0° .*
-- $+90°$  X-axis rotation: `[0.7071, 0.7071, 0, 0]`.\
-*Expected angle: 90° pitch.*
-- $-90°$ X-axis: `[0.7071, -0.7071, 0, 0]`.\
-*Expected: -90° pitch.*
-- $+90°$ Y-axis rotation: `[0.7071, 0, 0.7071, 0]`.\
-*Expected: 0° pitch (only pertains to `x`).*
-- $-90°$ Y-axis rotation: `[0.7071, 0, -0.7071, 0]`.\
-*Expected: 0° pitch.*
-- $+90°$ Z-axis rotation: `[0.7071, 0, 0, 0.7071]`.
-- $-90°$ Z-axis rotation: `[0.7071, 0, 0, -0.7071]`.
+| Test case | Input quaternion | Expected pitch (radians) | Degree equivalent |
+| --- | --- | --- | --- |
+| Identity (no rotation) | `[1, 0, 0, 0]` | `0` | 0° |
+| +90° around X | `[0.7071, 0.7071, 0, 0]` | `π / 2` | +90° |
+| −90° around X | `[0.7071, -0.7071, 0, 0]` | `-π / 2` | −90° |
+| +30° around Y | `[0.9659, 0, 0.2588, 0]` | `0` | 0° |
+| −30° around Y | `[0.9659, 0, -0.2588, 0]` | `0` | 0° |
+| +90° around Z | `[0.7071, 0, 0, 0.7071]` | `0` | 0° |
+| −90° around Z | `[0.7071, 0, 0, -0.7071]` | `0` | 0° |
 
-#### Other manageable cases
-- $+30°$ X-axis rotation: `[0.9659, 0.2588, 0, 0]`
-- $+180°$ Y-axis rotation:  `[0, 1, 0, 0]`
-- Negation of $-90°$ Z-axis quaternion components: `[-0.7071, 0, 0, 0.7071]`.\
-*Expected to be the same orientation, just the other way.*
-- $+185°$ X-axis rotation: 
-- $+175°$ X-axis rotation: 
+The Y and Z cases verify that rotations around other axes do not
+incorrectly register as pitch in these configurations.
+
+The standard Y cases deliberately avoid ±90°, where the `xyz` Euler representation encounters gimbal lock. This is when the same orientation can be represented with nonzero X and Z Euler angles.
+
+#### Additional cases
+
+| Test case | Input quaternion | Expected pitch (radians) | Degree equivalent |
+| --- | --- | --- | --- |
+| $+30°$ around X | `[0.9659, 0.2588, 0, 0]` | `π / 6` | $+30°$ |
+| $+180°$ around X | `[0, 1, 0, 0]` | Either `π` or `-π` | $±180°$ |
+| Negated $−90°$ Z quaternion | `[-0.7071, 0, 0, 0.7071]` | `0` | $0°$ |
+| $+185°$ around X | `[-0.0436, 0.9990, 0, 0]` | `-35π / 36` | $−175°$ |
+| $+175°$ around X | `[0.0436, 0.9990, 0, 0]` | `35π / 36` | $+175°$ |
+
+- **180° case:** A zero scalar component is valid.
+- **Quaternion negation:** `q` and `-q` represent exactly the same orientation. Compare this result with the original −90° Z case.
+- **Angle wrapping:** +185° and −175° describe the same X rotation. The returned angle wraps into the supported range.
+- **Boundary equivalence:** At exactly 180°, both endpoints are valid because +π and −π represent the same X rotation.
+
+### Pitch Rate
+
+### Left Wheel Speed
+
+### Right Wheel Speed
+
+### Target and Actual Wheel Speed Difference
+
+### Target and Actual Yaw Difference
+
+## Act
+
+The file [`test_control_agent_base_env.py`](../../../tests/robot_environments/test_control_agent_base_env.py)
