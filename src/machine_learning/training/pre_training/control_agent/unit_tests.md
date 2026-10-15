@@ -64,6 +64,7 @@ The standard Y cases deliberately avoid ±90°, where the `xyz` Euler representa
 | --- | --- | --- | --- |
 | $+30°$ around X | `[0.9659, 0.2588, 0, 0]` | `π / 6` | $+30°$ |
 | $+180°$ around X | `[0, 1, 0, 0]` | Either `π` or `-π` | $±180°$ |
+| +180° around X (calculated quaternion) | `[np.cos(np.pi / 2), np.sin(np.pi / 2), 0, 0]` | Either `π` or `-π` | ±180° |
 | Negated $−90°$ Z quaternion | `[-0.7071, 0, 0, 0.7071]` | `0` | $0°$ |
 | $+185°$ around X | `[-0.0436, 0.9990, 0, 0]` | `-35π / 36` | $−175°$ |
 | $+175°$ around X | `[0.0436, 0.9990, 0, 0]` | `35π / 36` | $+175°$ |
