@@ -198,15 +198,15 @@ class ControlAgentBaseEnv(MujocoEnv, utils.EzPickle):
 
         return np.array(image)
 
-    def  get_pitch(self) -> float:
+    def get_pitch(self) -> float:
         quat = self.data.body("robot_body").xquat
-        if quat[0] == 0:
+        if quat[1] == 0:
             return 0
 
         rotation = Rotation.from_quat([quat[0], quat[1], quat[2], quat[3]], scalar_first=True)  # Quaternion order is [w, x, y, z] (scalar first)
         angles = rotation.as_euler('xyz', degrees=False)
         # print(angles)
-        return angles[0]
+        return angles[0] # extracted `X` Euler angle in radians
 
     def get_pitch_dot(self) -> float:
         angular = self.data.joint('robot_body_joint').qvel[-3:]
