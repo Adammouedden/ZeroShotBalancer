@@ -2,7 +2,6 @@ import click
 import gymnasium as gym
 
 # TODO: Implement normalization
-from gymnasium.wrappers.util import RunningMeanStd
 
 import logging
 import numpy as np
@@ -63,7 +62,6 @@ def algorithm_factory(algorithm_name: str, env: gym.Env) -> BaseAlgorithm:
         )
         return model
     elif algorithm_name == "PPO":
-        RunningMeanStd.update()
         model = stable_baselines3.PPO(
             "MlpPolicy",
             env=env,
