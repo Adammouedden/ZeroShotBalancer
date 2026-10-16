@@ -245,10 +245,10 @@ class ControlAgentBaseEnv(MujocoEnv, utils.EzPickle):
 
     def get_yaw(self) -> float:
         quat = self.data.body("robot_body").xquat
-        if quat[0] == 0:
-            return 0
+        # if quat[1] == 0: # Potential bug
+        #     return 0
 
-        rotation = Rotation.from_quat([quat[1], quat[2], quat[3], quat[0]])  # Quaternion order is [x, y, z, w]
+        rotation = Rotation.from_quat([quat[0], quat[1], quat[2], quat[3]], scalar_first=True)  # Quaternion order is [w, x, y, z], scalar-first order
         angles = rotation.as_euler('xyz', degrees=False)
         return angles[2]
 
@@ -265,7 +265,7 @@ class ControlAgentBaseEnv(MujocoEnv, utils.EzPickle):
         wheel_vel_l, wheel_vel_r = self.get_wheel_velocities()
 
         pitch_normalized = pitch / PITCH_MAX
-        pitch_dot_normalized = pitch_dot / PITCH_DOT_MAX
+        pitch_dot_normalized = pitch_dot / PITCH_DOT_MAX    # PITCH_DOT_MAX is currently 1.
         wheel_vel_l_normalized = wheel_vel_l / WHEEL_SPEED_MAX * 4
         wheel_vel_r_normalized = wheel_vel_r / WHEEL_SPEED_MAX * 4
         delta_wheel_speed_normalized = (self.target_wheel_speed - self.get_wheel_speed()) / WHEEL_SPEED_MAX * 4
