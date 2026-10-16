@@ -84,8 +84,12 @@ def side_by_side(video_a: Path, video_b: Path, labels: tuple[str, str], output: 
               help="env for model B (default: inferred from its models/<EnvId>_PPO folder)")
 @click.option('-s', '--schedule', 'schedule_name', default="mixed_schedule.json",
               help="schedule JSON (looked up in this folder if not found)")
+# Select the MuJoCo world XML for each model
+@click.option('--xml-a', default='base_world_env.xml',help='World XML for original robot')
+@click.option('--xml-b', default='base_world_calibrated.xml',help='World XML for calibrated robot')
 @click.option('--seed', default=0)
-def compare(model_a: Path, model_b: Path, env_a: str | None, env_b: str | None, schedule_name: str, seed: int):
+
+def compare(model_a: Path, model_b: Path, env_a: str | None, env_b: str | None, schedule_name: str, seed: int, xml_a: str, xml_b: str):
     runs = {
         "model_a": (model_a.resolve(), infer_env(model_a, env_a, "--env-a")),
         "model_b": (model_b.resolve(), infer_env(model_b, env_b, "--env-b")),
@@ -99,8 +103,12 @@ def compare(model_a: Path, model_b: Path, env_a: str | None, env_b: str | None, 
         futures = {}
         for name, (model, env_id) in runs.items():
             click.echo(f"Recording {name}: {model} in {env_id} ...")
-            futures[name] = pool.submit(record_video, str(model), str(test_dir / f"{name}.mp4"), schedule, env_id,
-                                        seed=seed)
+            
+            xml_file = xml_a if name == "model_a" else xml_b
+            futures[name] = pool.submit(record_video,str(model),str(test_dir / f"{name}.mp4"),
+                schedule,env_id,seed=seed,xml_file=xml_file
+            )
+            
         results = {name: {"model": str(runs[name][0]), "env": runs[name][1], **f.result()}
                    for name, f in futures.items()}
 

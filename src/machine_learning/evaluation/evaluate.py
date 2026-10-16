@@ -169,14 +169,15 @@ def video(model: str, output: str, duration: float | None, schedule_name: str, e
 
 
 def record_video(model: str, output: str, schedule: list[list[float]] | None, env_id: str,
-                 duration: float | None = None, seed: int = 0, reset_grace: float = RESET_GRACE) -> dict:
+                duration: float | None = None, seed: int = 0, reset_grace: float = RESET_GRACE,
+                xml_file: str = "base_world_env.xml") -> dict:
     """
     Record a clip following `schedule` (None = the env's built-in schedule) and return tracking metrics.
     """
     if duration is None:
         duration = 30.0 if schedule is None else schedule[-1][0] + LAST_ENTRY_HOLD
-
-    env = gym.make(env_id, render_mode="rgb_array")
+    # Which world to load
+    env = gym.make(env_id, render_mode="rgb_array", xml_file=xml_file)
     robot = env.unwrapped
     policy = stable_baselines3.PPO.load(model, device="cpu")
     np.random.seed(seed)
