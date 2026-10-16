@@ -1,26 +1,27 @@
 <mujoco model="balance">
     <worldbody>
-        <body name="robot_body">
+        <body name="robot_body" pos="0 0 0.00602">
             <joint name="robot_body_joint" type="free"/>
             <geom size="0.05 0.0185 0.0855" pos="0 0 0.0995" type="box"/>
-            <inertial pos="-0.000508746 0.003833601 0.086700949"
+            <inertial pos="-0.000508746 0.003833601 0.072700949"
                 mass="1.020946471"
                 fullinertia="0.001504064 0.002409416 0.001139123 -0.000002386 0.000016634 -0.000110993"/>
-            <body name="l_wheel" pos="-0.084586471 -0.000100401 0.043508788">
+            <body name="l_wheel" pos="-0.084586471 -0.000100401 0.029508788">
                 <inertial pos="0 0 0" mass="0.060"
                 diaginertia="0.000036750 0.000024855 0.000024855"/>
                 <joint name="torso_l_wheel" type="hinge" pos="0 0 0" axis="-1 0 0" damping="0.01"/>
-                <geom name="l_wheel_geom" size="0.035 0.018" quat="0.707107 0 0.707107 0" type="cylinder"  material="wheel_material"/>
+                <geom name="l_wheel_geom" size="0.0325 0.013" quat="0.707107 0 0.707107 0" type="cylinder"  material="wheel_material"/>
             </body>
-            <body name="r_wheel" pos="0.082502957 0.000323456 0.042975666">
+            <body name="r_wheel" pos="0.082502957 0.000323456 0.028975666">
                 <inertial pos="0 0 0" mass="0.060"
                 diaginertia="0.000036750 0.000024855 0.000024855"/>
                 <joint name="torso_r_wheel" type="hinge" pos="0 0 0" axis="1 0 0" damping="0.01"/>
-                <geom name="r_wheel_geom" size="0.035 0.018" quat="0.707107 0 0.707107 0" type="cylinder" material="wheel_material"/>
+                <geom name="r_wheel_geom" size="0.0325 0.013" quat="0.707107 0 0.707107 0" type="cylinder" material="wheel_material"/>
             </body>
         </body>
     </worldbody>
     <actuator>
+        <!--Provisional motor range-->
         <velocity name="motor_l_wheel" joint="torso_l_wheel" ctrllimited="true" ctrlrange="-78.54 78.54" kv="4.0" forcelimited="true" forcerange="-0.65 0.65"/>
         <velocity name="motor_r_wheel" joint="torso_r_wheel" ctrllimited="true" ctrlrange="-78.54 78.54" kv="4.0" forcelimited="true" forcerange="-0.65 0.65"/>
     </actuator>
