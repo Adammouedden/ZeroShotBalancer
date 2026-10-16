@@ -48,8 +48,10 @@ class ControlAgentBaseEnv(MujocoEnv, utils.EzPickle):
         # difference in target wheel speed to actual wheel speed
 
     # From ZSB Team
-        # difference in target yaw to actual yaw
-
+        # STR-99: difference in target yaw to actual yaw, so the agent can observe its heading
+        # error directly instead of inferring it from the wheel speed difference.
+        # The last bound is +/-pi (RobotBaseEnv used +/-1.0) because this term is a wrapped
+        # angle in radians rather than a normalized wheel-yaw ratio.
         observation_space = Box(
             np.array([-math.pi * 2, -math.pi * 2,  -1.0, -1.0, -1.0, -math.pi]),
             np.array([math.pi * 2, math.pi * 2, 1.0, 1.0, 1.0, math.pi]),
@@ -270,6 +272,9 @@ class ControlAgentBaseEnv(MujocoEnv, utils.EzPickle):
         wheel_vel_l_normalized = wheel_vel_l / WHEEL_SPEED_MAX * 4
         wheel_vel_r_normalized = wheel_vel_r / WHEEL_SPEED_MAX * 4
         delta_wheel_speed_normalized = (self.target_wheel_speed - self.get_wheel_speed()) / WHEEL_SPEED_MAX * 4
+        # STR-96: measure heading error against get_yaw() rather than get_wheel_yaw()/get_yaw_dot()
+        # STR-99: feed it to the agent wrapped to [-pi, pi), the shortest signed error across the
+        # -pi/pi boundary. RobotBaseEnv used (target_yaw - get_wheel_yaw()) / YAW_MAX * 3 here.
         delta_wheel_yaw_normalized = (self.target_yaw - self.get_yaw() + np.pi) % (2*np.pi) - np.pi
 
         return np.array(
