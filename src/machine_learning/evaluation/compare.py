@@ -1,9 +1,15 @@
 """
-Record two models on the same schedule and compare them. Defaults to the reference baseline vs the control agent.
+Record two models on the same schedule and compare them. Defaults to the reference baseline vs
+the model the given ticket trained.
 
-  uv run compare.py                              # mixed_schedule.json -> comparison_testing/test-NN/
-  uv run compare.py -s my_schedule.json          # custom schedule (looked up in this folder if not found)
-  uv run compare.py -a path/a.zip -b path/b.zip  # any two models
+  uv run compare.py -out STR-106                      # -> experiments/STR-106/evaluation/comparison/mixed_schedule/
+  uv run compare.py -out STR-106 -s my_schedule.json  # custom schedule (looked up in this folder if not found)
+  uv run compare.py -out STR-106 -a a.zip -b b.zip    # any two models
+
+The Jira ticket (-out/--output_path) files this comparison next to that ticket's training
+artifacts, and -b defaults to the model that ticket trained. Without a ticket, results go to
+experiments/_unmapped/ and -b has to be named explicitly. Comparisons are named after the
+schedule rather than numbered, so one ticket can hold an easy and a hard evaluation.
 
 Both models are recorded in parallel, then stitched into side_by_side.mp4 (A left, B right).
 """
@@ -18,12 +24,17 @@ from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
 from PIL import Image, ImageDraw
 
-from evaluate import EVAL_DIR, TRAINING_DIR, VIDEO_ENVS, VIDEO_FPS, load_schedule, record_video, schedule_path
-
-OUTPUT_ROOT = EVAL_DIR / "comparison_testing"
+from evaluate import TRAINING_DIR, VIDEO_ENVS, VIDEO_FPS, load_schedule, record_video, schedule_path
+# STR-91: per-ticket artifact layout, replaces the auto-numbered comparison_testing/test-NN/
+from visibility.experiment_tracking import (
+    Experiment,
+    JiraTicket,
+    TICKET_OPTION_HELP_OPTIONAL,
+    UNMAPPED_TICKET,
+    claim_output_dir,
+)
 
 DEFAULT_MODEL_A = TRAINING_DIR / "reference_baseline/models/ReferenceBaselineTrainingEnv_PPO/best_model.zip"
-DEFAULT_MODEL_B = TRAINING_DIR / "pre_training/control_agent/models/ControlAgentTrainingEnv_PPO/best_model.zip"
 
 # (key, label, format, higher is better, comparable across different envs)
 METRICS = [
@@ -36,14 +47,6 @@ METRICS = [
     ("max_reward", "max step reward", "{:.3f}", True, False),
     ("total_reward", "total reward", "{:.1f}", True, False),
 ]
-
-
-def next_test_dir() -> Path:
-    OUTPUT_ROOT.mkdir(exist_ok=True)
-    numbers = [int(p.name.split("-")[1]) for p in OUTPUT_ROOT.glob("test-*") if p.name.split("-")[1].isdigit()]
-    test_dir = OUTPUT_ROOT / f"test-{max(numbers, default=0) + 1:02d}"
-    test_dir.mkdir()
-    return test_dir
 
 
 def infer_env(model: Path, env_id: str | None, flag: str) -> str:
@@ -74,10 +77,19 @@ def side_by_side(video_a: Path, video_b: Path, labels: tuple[str, str], output: 
 
 
 @click.command()
+@click.option(
+    '-out',
+    '--output_path',
+    'ticket',
+    default=UNMAPPED_TICKET,
+    show_default=True,
+    type=JiraTicket(),
+    help=TICKET_OPTION_HELP_OPTIONAL
+)
 @click.option('-a', '--model-a', type=click.Path(exists=True, dir_okay=False, path_type=Path),
               default=DEFAULT_MODEL_A, help="first model .zip (default: reference_baseline best_model.zip)")
 @click.option('-b', '--model-b', type=click.Path(exists=True, dir_okay=False, path_type=Path),
-              default=DEFAULT_MODEL_B, help="second model .zip (default: control_agent best_model.zip)")
+              default=None, help="second model .zip (default: the model this ticket trained)")
 @click.option('--env-a', type=click.Choice(VIDEO_ENVS), default=None,
               help="env for model A (default: inferred from its models/<EnvId>_PPO folder)")
 @click.option('--env-b', type=click.Choice(VIDEO_ENVS), default=None,
@@ -85,13 +97,22 @@ def side_by_side(video_a: Path, video_b: Path, labels: tuple[str, str], output: 
 @click.option('-s', '--schedule', 'schedule_name', default="mixed_schedule.json",
               help="schedule JSON (looked up in this folder if not found)")
 @click.option('--seed', default=0)
-def compare(model_a: Path, model_b: Path, env_a: str | None, env_b: str | None, schedule_name: str, seed: int):
+@click.option('--force', is_flag=True, default=False,
+              help="overwrite an existing comparison for this ticket and schedule")
+def compare(ticket: str, model_a: Path, model_b: Path | None, env_a: str | None, env_b: str | None,
+            schedule_name: str, seed: int, force: bool):
+    experiment = Experiment(ticket)
+    experiment.warn_if_unmapped()
+    # STR-91: the ticket's own model is what the experiment is about, so it is model B by default
+    model_b = model_b or experiment.best_model()
+
     runs = {
         "model_a": (model_a.resolve(), infer_env(model_a, env_a, "--env-a")),
         "model_b": (model_b.resolve(), infer_env(model_b, env_b, "--env-b")),
     }
     schedule = load_schedule(schedule_name)
-    test_dir = next_test_dir()
+    # STR-91: named after the schedule, so one ticket can hold an easy and a hard evaluation
+    test_dir = claim_output_dir(experiment.comparison_dir(schedule_name), force)
     shutil.copy(schedule_path(schedule_name), test_dir / "schedule.json")
 
     # one process per model; spawn so each gets its own MuJoCo renderer
@@ -110,6 +131,14 @@ def compare(model_a: Path, model_b: Path, env_a: str | None, env_b: str | None, 
                  test_dir / "side_by_side.mp4")
 
     (test_dir / "results.json").write_text(json.dumps(results, indent=4))
+    # STR-91: record this evaluation against the ticket
+    experiment.write_metadata(
+        command="compare",
+        schedule=schedule_name,
+        seed=seed,
+        output=str(test_dir),
+        results=results,
+    )
 
     names = list(runs)
     same_env = runs["model_a"][1] == runs["model_b"][1]

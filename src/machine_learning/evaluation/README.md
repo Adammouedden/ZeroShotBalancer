@@ -9,6 +9,10 @@ Curiously, because we always test on the same time interval, speeds, and yaws, t
 
 ### Developer Log:
 
+(These test numbers are the old `comparison_testing/test-NN/` folders, now migrated into
+`experiments/<TICKET>/evaluation/comparison/` — see
+[experiments/README.md](../experiments/README.md) for the mapping.)
+
 Test-01: only mixed_schedule.json existed
 
 Test-02: mixed_schedule_hard.json was created
@@ -26,39 +30,45 @@ The format for this json is:
 ```
 
 Example:
-Your control agent command, run from machine_learning/:
+Your control agent command, run from machine_learning/, passing the ticket you are evaluating for:
 ```bash
-uv run evaluation/evaluate.py video -e ControlAgentTrainingEnv \
-  -m training/pre_training/control_agent/models/ControlAgentTrainingEnv_PPO/best_model.zip \
-  -o training/pre_training/control_agent/movies/attempt2/eval_mixed.mp4
+uv run evaluation/evaluate.py video -out STR-106 -e ControlAgentTrainingEnv \
+  -m experiments/STR-106/training/models/ControlAgentTrainingEnv_PPO/best_model.zip
 ```
+
+The clip lands in `experiments/STR-106/evaluation/video/<schedule>.mp4`. Pass `-o` to write
+somewhere else, and `--force` to overwrite an existing clip for the same ticket and schedule.
 
 ## Comparing two models (`compare.py`)
 
-`compare.py` records two models on the same schedule in parallel (one process per model), then saves both videos, a side-by-side video and a table of metrics. By default it compares the reference baseline against the control agent (both `best_model.zip`) on `mixed_schedule.json`.
+`compare.py` records two models on the same schedule in parallel (one process per model), then saves both videos, a side-by-side video and a table of metrics. By default it compares the reference baseline against the model the given ticket trained, on `mixed_schedule.json`.
 
-Run from this folder (`evaluation/`):
+Run from this folder (`evaluation/`). `-out`/`--output_path` is the Jira ticket being
+evaluated. Omit it and results go to `experiments/_unmapped/` with a warning, and `-b` then has
+to be named explicitly:
 
 ```bash
-# Default: reference_baseline vs control_agent best_model.zip, mixed_schedule.json
-uv run compare.py
+# Default: reference_baseline vs the model STR-106 trained, mixed_schedule.json
+uv run compare.py -out STR-106
 
 # Custom schedule (a bare file name is looked up in this folder)
-uv run compare.py -s mixed_schedule_hard.json
+uv run compare.py -out STR-106 -s mixed_schedule_hard.json
 
 # Any two models, e.g. an early checkpoint vs the best model
-uv run compare.py \
-  -a ../training/pre_training/control_agent/models/ControlAgentTrainingEnv_PPO/ControlAgentTrainingEnv_PPO_cp__40000_steps.zip \
-  -b ../training/pre_training/control_agent/models/ControlAgentTrainingEnv_PPO/best_model.zip
+uv run compare.py -out STR-106 \
+  -a ../experiments/STR-106/training/models/ControlAgentTrainingEnv_PPO/ControlAgentTrainingEnv_PPO_cp__40000_steps.zip \
+  -b ../experiments/STR-106/training/models/ControlAgentTrainingEnv_PPO/best_model.zip
 ```
 
 | Option | Default | Description |
 | --- | --- | --- |
+| `-out`, `--output_path` | `_unmapped` | Jira ticket being evaluated; sets where the run is written |
 | `-a`, `--model-a` | reference_baseline `best_model.zip` | First model `.zip` |
-| `-b`, `--model-b` | control_agent `best_model.zip` | Second model `.zip` |
+| `-b`, `--model-b` | the model this ticket trained | Second model `.zip` |
 | `--env-a`, `--env-b` | inferred | Env to run each model in: `ReferenceBaselineTrainingEnv` or `ControlAgentTrainingEnv` |
 | `-s`, `--schedule` | `mixed_schedule.json` | Schedule JSON |
 | `--seed` | `0` | Seed for the env reset |
+| `--force` | off | Overwrite an existing comparison for this ticket and schedule |
 
 Each model runs in the env it was trained in. The env is read from the model's folder name (`models/<EnvId>_PPO/...`, which is where `sb_rl.py` saves models). If the folder name doesn't show the env, pass `--env-a` / `--env-b`.
 
@@ -66,16 +76,26 @@ The clip length is the last schedule entry's start time + 2 s (30 s for `mixed_s
 
 ### Output
 
-Each run creates the next numbered folder, `comparison_testing/test-01/`, `test-02/`, and so on:
+Each run writes into the ticket's experiment folder, named after the schedule it ran, so one
+ticket can hold an easy and a hard evaluation without them colliding:
 
 ```
-comparison_testing/test-NN/
+experiments/<TICKET>/evaluation/comparison/<schedule>/
 ├── model_a.mp4      # video of model A, with a speed / yaw / pitch readout
 ├── model_b.mp4
 ├── side_by_side.mp4 # model A (left) and model B (right) in sync, labelled at the bottom
 ├── schedule.json    # copy of the schedule used
 └── results.json     # model path, env and metrics for each model
 ```
+
+The `.mp4` files are local only (see [experiments/README.md](../experiments/README.md)); the
+`results.json` and `schedule.json` are committed, so the numbers for a run are in the repo even
+though the footage is not. Post clips worth keeping to the Jira ticket.
+
+The run is also appended to `experiments/<TICKET>/metadata.json`. Re-running the same ticket
+and schedule refuses to overwrite the recorded result unless you pass `--force`. Runs used to
+land in auto-numbered `comparison_testing/test-NN/` folders; those have been migrated into the
+tickets that produced them (see [experiments/README.md](../experiments/README.md)).
 
 It also prints a table to the terminal:
 

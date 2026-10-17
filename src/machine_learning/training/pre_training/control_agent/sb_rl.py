@@ -1,9 +1,6 @@
 import click
 import gymnasium as gym
 
-# TODO: Implement normalization
-from gymnasium.wrappers.util import RunningMeanStd
-
 import logging
 import numpy as np
 import os
@@ -27,19 +24,38 @@ from stable_baselines3.common.noise import NormalActionNoise
 # while not called directly, we need to import this so the environments are registered
 import envs
 
+# STR-91: per-ticket artifact layout, shared with the evaluation scripts so the training and
+# evaluation sides agree on where a ticket's artifacts go
+from visibility.experiment_tracking import Experiment, JiraTicket, TICKET_OPTION_HELP
 from visibility.reward_visibility import RewardTermsCallback
 
 logging.basicConfig(level=logging.INFO, format='%(message)s')
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
-# Create directories to hold models, logs, sim videos
-MODEL_DIR = "models"
-LOG_DIR = "logs"
-RECORDING_DIR = "movies"
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 
-def algorithm_factory(algorithm_name: str, env: gym.Env) -> BaseAlgorithm:
+
+def resolve_model_file(ctx: dict, environment: str, suffix: str = ".zip") -> str:
+    """
+    The model to load: --model when given, otherwise this ticket's best model.
+
+    STR-91: the default used to be the shared models/<EnvId>_<ALGO>/ folder, which held
+    whichever run finished last.
+    """
+    model_file = ctx.obj['MODEL_PATH']
+    if model_file is None:
+        experiment = ctx.obj['EXPERIMENT']
+        model_dir = experiment.model_dir(environment, ctx.obj['ALGORITHM_NAME'])
+        model_file = str(model_dir / f"best_model{suffix}")
+
+    if not os.path.isfile(model_file):
+        raise RuntimeError(f"Could not open model file: {model_file}")
+
+    return model_file
+
+
+def algorithm_factory(algorithm_name: str, env: gym.Env, log_dir: str) -> BaseAlgorithm:
     """
     Factory method to create algorithm. Will also include any extra params needed for this
     particular case (balancing robot)
@@ -57,19 +73,18 @@ def algorithm_factory(algorithm_name: str, env: gym.Env) -> BaseAlgorithm:
             env=env,
             verbose=1,
             device=DEVICE,
-            tensorboard_log=LOG_DIR,
+            tensorboard_log=log_dir,
             policy_kwargs=policy_kwargs,
             action_noise=action_noise
         )
         return model
     elif algorithm_name == "PPO":
-        RunningMeanStd.update()
         model = stable_baselines3.PPO(
             "MlpPolicy",
             env=env,
             verbose=1,
             device=DEVICE,
-            tensorboard_log=LOG_DIR
+            tensorboard_log=log_dir
         )
         return model
     else:
@@ -81,7 +96,7 @@ def algorithm_factory(algorithm_name: str, env: gym.Env) -> BaseAlgorithm:
             env,
             verbose=1,
             device=DEVICE,
-            tensorboard_log=LOG_DIR
+            tensorboard_log=log_dir
         )
         return model
 
@@ -95,13 +110,7 @@ def convert(ctx: dict, environment: str):
 
     algorithm_name = ctx.obj['ALGORITHM_NAME']
 
-    model_file = ctx.obj['MODEL_PATH']
-    if model_file is None:
-        # then assume default name
-        model_file = os.path.join(MODEL_DIR, f"{environment}_{algorithm_name}", "best_model.zip")
-
-    if not os.path.isfile(model_file):
-        raise RuntimeError(f"Could not open model file: {model_file}")
+    model_file = resolve_model_file(ctx, environment)
 
     logger.info(f"Converting model to ONNX")
     logger.info(f"Algorithm: {algorithm_name}")
@@ -147,13 +156,7 @@ def test(ctx: dict, environment: str, show_io: bool, show_i: bool):
 
     algorithm_name = ctx.obj['ALGORITHM_NAME']
 
-    model_file = ctx.obj['MODEL_PATH']
-    if model_file is None:
-        # then assume default name
-        model_file = os.path.join(MODEL_DIR, f"{environment}_{algorithm_name}", "best_model.zip")
-
-    if not os.path.isfile(model_file):
-        raise RuntimeError(f"Could not open model file: {model_file}")
+    model_file = resolve_model_file(ctx, environment)
 
     logger.info(f"Starting test simulation")
     logger.info(f"Algorithm: {algorithm_name}")
@@ -198,13 +201,7 @@ def test_onnx(ctx: dict, environment: str, show_io: bool):
 
     algorithm_name = ctx.obj['ALGORITHM_NAME']
 
-    model_file = ctx.obj['MODEL_PATH']
-    if model_file is None:
-        # then assume default name
-        model_file = os.path.join(MODEL_DIR, f"{environment}_{algorithm_name}", "best_model.onnx")
-
-    if not os.path.isfile(model_file):
-        raise RuntimeError(f"Could not open model file: {model_file}")
+    model_file = resolve_model_file(ctx, environment, suffix=".onnx")
 
     logger.info(f"Starting ONNX test simulation")
     logger.info(f"Algorithm: {algorithm_name}")
@@ -249,13 +246,7 @@ def test_tflite(ctx: dict, environment: str, show_io: bool, show_i: bool):
 
     algorithm_name = ctx.obj['ALGORITHM_NAME']
 
-    model_file = ctx.obj['MODEL_PATH']
-    if model_file is None:
-        # then assume default name
-        model_file = os.path.join(MODEL_DIR, f"{environment}_{algorithm_name}", "best_model.tflite")
-
-    if not os.path.isfile(model_file):
-        raise RuntimeError(f"Could not open model file: {model_file}")
+    model_file = resolve_model_file(ctx, environment, suffix=".tflite")
 
     logger.info(f"Starting tflite test simulation")
     logger.info(f"Algorithm: {algorithm_name}")
@@ -511,35 +502,43 @@ def train(ctx: dict, environment: str, timesteps: int):
     """ Train a model by with a given MuJoCo environment """
 
     algorithm_name = ctx.obj['ALGORITHM_NAME']
+    # STR-91: all artifacts below go to experiments/<TICKET>/, not shared logs/models/movies
+    experiment = ctx.obj['EXPERIMENT']
+    experiment.make_training_dirs()
 
     env = gym.make(environment, render_mode='rgb_array')
     env = Monitor(env)
     env = gym.wrappers.RecordVideo(
         env,
-        video_folder=RECORDING_DIR,
+        video_folder=str(experiment.movies),
         video_length=0,
         episode_trigger = lambda x: x % 50 == 0,
     )
 
-    # Experiment STR-105, Normalize observation variables
+    # STR-105: normalize observation variables
     env = gym.wrappers.NormalizeObservation(env=env, epsilon=1e-8)
 
     logger.info(f"Starting training process")
     logger.info(f"Algorithm: {algorithm_name}")
     logger.info(f"Environment: {environment}")
+    logger.info(f"Experiment: {experiment.ticket}")
+    logger.info(f"Artifacts: {experiment.root}")
 
     model_file = ctx.obj['MODEL_PATH']
     if model_file is None:
         # no model given, so create a new one
-        # model = algorithm_class('MlpPolicy', env, verbose=1, device=DEVICE, tensorboard_log=LOG_DIR)
-        model = algorithm_factory(algorithm_name=algorithm_name, env=env)
+        model = algorithm_factory(
+            algorithm_name=algorithm_name,
+            env=env,
+            log_dir=str(experiment.logs)
+        )
         logger.info(f"Model: starting with new model")
     elif os.path.isfile(model_file):
         # start with an existing model
         algorithm_class = getattr(stable_baselines3, algorithm_name, None)
         if algorithm_class is None:
             raise RuntimeError(f"Couldn't find algorithm {algorithm_name}")
-        model = algorithm_class.load(model_file, env=env, tensorboard_log=LOG_DIR)
+        model = algorithm_class.load(model_file, env=env, tensorboard_log=str(experiment.logs))
         logger.info(f"Model: starting with {model_file}")
     else:
         raise RuntimeError(f"Model file {model_file} does not exist")
@@ -551,19 +550,23 @@ def train(ctx: dict, environment: str, timesteps: int):
         verbose=1
     )
 
+    # STR-91: best model and checkpoints land in this ticket's folder, so a later experiment
+    # cannot overwrite them - a trained model was lost that way before this layout existed
+    model_dir = experiment.model_dir(environment, algorithm_name)
+
     eval_callback = EvalCallback(
         env,
         eval_freq=20000,
         callback_on_new_best=callback_on_best,
         callback_after_eval=stop_train_callback,
         verbose=1,
-        best_model_save_path=os.path.join(MODEL_DIR, f"{environment}_{algorithm_name}"),
+        best_model_save_path=str(model_dir),
     )
 
     checkpoint_callback = CheckpointCallback(
         save_freq=40000,
         verbose=2,
-        save_path=os.path.join(MODEL_DIR, f"{environment}_{algorithm_name}"),
+        save_path=str(model_dir),
         name_prefix=f"{environment}_{algorithm_name}_cp_"
     )
 
@@ -573,11 +576,32 @@ def train(ctx: dict, environment: str, timesteps: int):
     if reward_weights is not None:
         callbacks.append(RewardTermsCallback(reward_weights))
 
-    model.learn(
-        total_timesteps=timesteps,
-        tb_log_name=f"{environment}_{algorithm_name}",
-        callback=CallbackList(callbacks)
+    # STR-91: record what produced this run so the folder is self-describing
+    experiment.write_metadata(
+        command="train",
+        environment=environment,
+        algorithm=algorithm_name,
+        timesteps=timesteps,
+        device=DEVICE,
+        starting_model=model_file,
+        reward_weights=reward_weights,
     )
+
+    try:
+        model.learn(
+            total_timesteps=timesteps,
+            tb_log_name=f"{environment}_{algorithm_name}",
+            callback=CallbackList(callbacks)
+        )
+    finally:
+        # Closing the env makes RecordVideo flush the clip it is part way through, so the last
+        # movie is actually watchable. In a finally block because these runs normally end with
+        # Ctrl-C rather than by hitting total_timesteps. Movies are local only - post anything
+        # worth keeping to the Jira ticket.
+        try:
+            env.close()
+        except Exception:
+            logger.warning("Could not close the environment cleanly", exc_info=True)
 
 
 @click.group()
@@ -595,8 +619,17 @@ def train(ctx: dict, environment: str, timesteps: int):
     type=click.Path(exists=False),
     help="Path to model file"
 )
+# STR-91: the ticket is required - it is the experiment's identity in the log
+@click.option(
+    '-out',
+    '--output_path',
+    'ticket',
+    required=True,
+    type=JiraTicket(),
+    help=TICKET_OPTION_HELP
+)
 @click.pass_context
-def cli(ctx: dict, algorithm: str, model: str | os.PathLike):
+def cli(ctx: dict, algorithm: str, model: str | os.PathLike, ticket: str):
     algorithm_class = getattr(stable_baselines3, algorithm, None)
     if algorithm_class is None:
         raise RuntimeError(f"Could not find Stable Baselines3 algorithm for: {algorithm}")
@@ -606,6 +639,7 @@ def cli(ctx: dict, algorithm: str, model: str | os.PathLike):
     ctx.ensure_object(dict)
     ctx.obj['ALGORITHM_NAME'] = algorithm
     ctx.obj['MODEL_PATH'] = model
+    ctx.obj['EXPERIMENT'] = Experiment(ticket)  # STR-91
 
 
 cli.add_command(convert)
@@ -617,14 +651,7 @@ cli.add_command(test_tflite_arduino)
 cli.add_command(train)
 
 
-def __make_folders():
-    # create folders to store training data, models, logs, etc
-    os.makedirs(MODEL_DIR, exist_ok=True)
-    os.makedirs(LOG_DIR, exist_ok=True)
-    os.makedirs(RECORDING_DIR, exist_ok=True)
-
-
 if __name__ == '__main__':
-    __make_folders()
+    # STR-91: artifact folders are created per experiment, once the ticket is known (see Experiment)
     cli(obj={})
 

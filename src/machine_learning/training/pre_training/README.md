@@ -33,8 +33,8 @@ This makes the reward depend directly on heading error.
 #### Evaluation and results
 The training log reports major improvements. However, the evaluation was too easy to clearly establish whether heading tracking improved. A harder evaluation was introduced for subsequent experiments.
 
-- [Evaluation results](../../evaluation/comparison_testing/test-01)
-- [Training logs](control_agent/logs/ControlAgentTrainingEnv_PPO_2)
+- [Evaluation results](../../experiments/STR-96/evaluation/comparison/mixed_schedule)
+- [Training logs](../../experiments/STR-96/training/logs/ControlAgentTrainingEnv_PPO_2)
 
 **Log numbering:** This experiment uses training log 2 because the first training run was a smoke test.
 
@@ -53,8 +53,8 @@ Halve the scalar weight of the lean reward term from 10 to 5.
 #### Evaluation and results
 The experiment log reports major improvements following this change. The entry does not include quantitative metrics, so the linked evaluation results and training logs provide the supporting record.
 
-- [Evaluation results](../../evaluation/comparison_testing/test-02)
-- [Training logs](control_agent/logs/ControlAgentTrainingEnv_PPO_3)
+- [Evaluation results](../../experiments/STR-97/evaluation/comparison/mixed_schedule_hard)
+- [Training logs](../../experiments/STR-97/training/logs/ControlAgentTrainingEnv_PPO_3)
 
 **Log numbering:** This experiment uses training log 3 because the first training run was a smoke test.
 
@@ -79,8 +79,8 @@ The experiment log reports major regressions after removing the penalty. This ou
 
 The existing entry does not quantify which performance metrics worsened.
 
-- [Evaluation results](../../evaluation/comparison_testing/test-03)
-- [Training logs](control_agent/logs/ControlAgentTrainingEnv_PPO_4)
+- [Evaluation results](../../experiments/STR-98/evaluation/comparison/mixed_schedule_hard)
+- [Training logs](../../experiments/STR-98/training/logs/ControlAgentTrainingEnv_PPO_4)
 
 **Log numbering:** This experiment uses training log 4 because the first training run was a smoke test.
 
@@ -106,84 +106,10 @@ The experiment log reports substantial improvements, with evaluation results sho
 
 The existing entry does not provide quantitative metrics or establish whether performance exceeded the best earlier experiment.
 
-- [Evaluation results](../../evaluation/comparison_testing/test-04)
-- [Training logs](control_agent/logs/ControlAgentTrainingEnv_PPO_5)
+- [Evaluation results](../../experiments/STR-99/evaluation/comparison/mixed_schedule)
+- [Training logs](../../experiments/STR-99/training/logs/ControlAgentTrainingEnv_PPO_5)
 
 **Log numbering:** This experiment uses training log 5 because the first training run was a smoke test.
-
----
-### STR-100 — Restore the wheel-speed difference penalty
-
-**Jira:** [STR-100](https://ucf-team-xx2ob1z2.atlassian.net/browse/STR-100?atlOrigin=eyJpIjoiMjk1NTVkZGJiMzAyNDExZDg5YjQ3MjRhYTIyYjE1YTkiLCJwIjoiaiJ9)  
-**Previously:** Experiment 5
-
-#### Hypothesis
-Restoring the penalty for unequal wheel speeds should discourage excessive spinning and encourage controlled target-heading tracking while maintaining balance.
-
-Without this penalty, the agent may repeatedly spin through the target heading, briefly reducing direction error while continuing to collect reward for remaining upright.
-
-#### Change
-Restore the `dyd` penalty based on the difference between left and right wheel velocities:
-
-`dyd = l_wheel_v - r_wheel_v`
-
-This penalty was removed in STR-98 (formerly Experiment 3), which reported major regressions.
-
-#### Evaluation and results
-The original entry identifies excessive spinning as reward hacking and motivates restoring the penalty. It does not include evaluation results or training-log links for this experiment.
-
-The effect of restoring the penalty should be assessed through spinning behavior, heading error, and balance performance.
-
----
-### STR-101 — Change target yaw periodically during training
-
-**Jira:** [STR-101](https://ucf-team-xx2ob1z2.atlassian.net/browse/STR-101?atlOrigin=eyJpIjoiZTlmOWRkZTg4NDYyNGFiNDgxN2JkNjFlZWEyNDNhMzgiLCJwIjoiaiJ9)  
-**Previously:** Experiment 6  
-**Status:** Planned
-
-#### Hypothesis
-Changing target yaw during an episode should improve the agent’s ability to respond to heading changes in evaluation, compared with training on one fixed target yaw per episode.
-
-#### Proposed change
-Introduce a scheduler that samples a new random target yaw at fixed time intervals within each training episode.
-
-This exposes the agent to repeated heading changes, bringing training conditions closer to the evaluation environment.
-
-#### Evaluation plan
-Compare the updated agent against the preceding configuration using the same evaluation conditions.
-
-Assess heading-tracking error and recovery after target changes, while checking that balance and target-speed tracking are maintained.
-
-#### Results
-Not yet performed according to the existing experiment log.
-
----
-### STR-102 — Introduce two-phase curriculum learning
-
-**Jira:** [STR-102](https://ucf-team-xx2ob1z2.atlassian.net/browse/STR-102?atlOrigin=eyJpIjoiMDIyZDE3OGViNTc4NGU0Y2I2NmViNmVmNjQ0OTJmYzQiLCJwIjoiaiJ9)  
-**Previously:** Experiment 7  
-**Status:** Planned
-
-#### Hypothesis
-Training basic balance and target-speed tracking before introducing changing target headings should help the agent learn heading tracking while retaining previously learned behavior.
-
-#### Proposed change
-Split training into two phases:
-
-1. **Balance and target-speed tracking:** Hold target yaw at the robot’s initial heading throughout each episode. This removes target-heading changes, although heading error can still develop if the robot turns.
-2. **Dynamic heading tracking:** Save the phase-one checkpoint and continue training with the periodic target-yaw scheduler introduced in STR-101.
-
-A fixed target yaw alone does not disable the heading reward. Document any changes to reward weights between phases.
-
-#### Evaluation plan
-Compare the curriculum-trained agent with an agent trained using dynamic target yaw from the start, keeping the total training budget and evaluation conditions comparable.
-
-Assess falls, target-speed error, heading error, and recovery after target-heading changes. Check whether phase two preserves balance and speed-tracking performance.
-
-#### Results
-Not yet performed according to the existing experiment log.
-
-**Dependency:** STR-101 — periodic target-yaw changes during training.
 
 ---
 ### STR-103 — Use a cosine-based heading-error penalty
