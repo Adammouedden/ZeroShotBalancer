@@ -35,7 +35,7 @@ YAW_TURN_TIMES = (2.0, 4.0, 5.0, 10.0, 15.0, 20.0, 25.0)
         self.target_wheel_speed = 0
 
         # between -10 and 10
-        self.delay_target_speed = self.rng.np_random.uniform(low=-10.0, high=10)
+        self.delay_target_speed = self.rng.uniform(low=-10.0, high=10)
         # now between 10 to 20 or -20 to -10
         if self.delay_target_speed > 0:
             self.delay_target_speed += 10
@@ -43,13 +43,13 @@ YAW_TURN_TIMES = (2.0, 4.0, 5.0, 10.0, 15.0, 20.0, 25.0)
             self.delay_target_speed -= 10
 
         # 2 degrees +/-
-        self.pitch_offset = self.rng.np_random.uniform(low=-0.0349066, high=0.0349066)
+        self.pitch_offset = self.rng.uniform(low=-0.0349066, high=0.0349066)
         ControlAgentBaseEnv.reset_model(self)
 
         # Headings are relative to the random direction the robot faces after reset, so "no turn" means no turn.
         # Each turn is a fresh random angle added to the previous heading, wrapped to [-pi, pi).
         self.start_yaw = self.get_yaw()
-        turns = self.rng.np_random.uniform(low=-np.pi, high=np.pi, size=len(YAW_TURN_TIMES))
+        turns = self.rng.uniform(low=-np.pi, high=np.pi, size=len(YAW_TURN_TIMES))
         self.target_headings = (self.start_yaw + np.cumsum(turns) + np.pi) % (2 * np.pi) - np.pi
         self.target_yaw = self.start_yaw
 
@@ -110,18 +110,18 @@ class ControlAgentTrainingEnv(ControlAgentBaseEnv):
         self.target_yaw = 0
 
         # between -10 and 10
-        self.delay_target_speed = self.rng.np_random.uniform(low=-10.0, high=10)
+        self.delay_target_speed = self.rng.uniform(low=-10.0, high=10)
         # now between 10 to 20 or -20 to -10
         if self.delay_target_speed > 0:
             self.delay_target_speed += 10
         else:
             self.delay_target_speed -= 10
 
-        self.delay_target_yaw = self.rng.np_random.uniform(low=-1*np.pi, high=np.pi)
+        self.delay_target_yaw = self.rng.uniform(low=-1*np.pi, high=np.pi)
         self.target_yaw = self.delay_target_yaw
 
         # 2 degrees +/-
-        self.pitch_offset = self.rng.np_random.uniform(low=-0.0349066, high=0.0349066)
+        self.pitch_offset = self.rng.uniform(low=-0.0349066, high=0.0349066)
         return ControlAgentBaseEnv.reset_model(self)
 
 
