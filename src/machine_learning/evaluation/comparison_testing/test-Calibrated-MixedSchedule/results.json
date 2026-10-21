@@ -1,0 +1,26 @@
+{
+    "model_a": {
+        "model": "C:\\Users\\alren\\Downloads\\SD1\\ZeroShotBalancer\\src\\machine_learning\\training\\reference_baseline\\models\\ReferenceBaselineTrainingEnv_PPO\\best_model.zip",
+        "env": "ReferenceBaselineTrainingEnv",
+        "duration_s": 30.0,
+        "reset_grace_s": 1.0,
+        "falls": 0,
+        "mean_speed_error": 4.1735237039719975,
+        "mean_yaw_error": 0.3236211419886872,
+        "mean_abs_pitch_deg": 3.368331303974752,
+        "max_reward": 6.13402903248965,
+        "total_reward": 4093.94445249971
+    },
+    "model_b": {
+        "model": "C:\\Users\\alren\\Downloads\\SD1\\ZeroShotBalancer\\src\\machine_learning\\training\\reference_baseline\\models\\ReferenceBaselineTrainingEnv_PPO\\best_model.zip",
+        "env": "ReferenceBaselineTrainingEnv",
+        "duration_s": 30.0,
+        "reset_grace_s": 1.0,
+        "falls": 13,
+        "mean_speed_error": 6.271644148491283,
+        "mean_yaw_error": 0.4797450587467953,
+        "mean_abs_pitch_deg": 5.75359543068468,
+        "max_reward": 5.136747841245033,
+        "total_reward": 4498.990324292593
+    }
+}

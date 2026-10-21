@@ -161,11 +161,14 @@ def annotate(frame: np.ndarray, lines: list[str]) -> np.ndarray:
 @click.option('--seed', default=0)
 @click.option('--reset-grace', default=RESET_GRACE,
               help="seconds targets are held at 0 after a fall reset (0 = resume the schedule immediately)")
+@click.option('-x', '--xml', 'xml_file', default="base_world_env.xml",
+              help="world XML in training/robot_environments (e.g. base_world_calibrated.xml)")
 def video(model: str, output: str, duration: float | None, schedule_name: str, env_id: str, seed: int,
-          reset_grace: float):
+          reset_grace: float, xml_file: str):
     schedule = None if schedule_name == BUILTIN_SCHEDULE else load_schedule(schedule_name)
-    results = record_video(model, output, schedule, env_id, duration, seed, reset_grace)
-    click.echo(f"Wrote {output}: {results['duration_s']:.0f}s, {results['falls']} fall(s), schedule={schedule_name}")
+    results = record_video(model, output, schedule, env_id, duration, seed, reset_grace, xml_file)
+    click.echo(f"Wrote {output}: {results['duration_s']:.0f}s, {results['falls']} fall(s), schedule={schedule_name}, "
+               f"xml={xml_file}")
 
 
 def record_video(model: str, output: str, schedule: list[list[float]] | None, env_id: str,
