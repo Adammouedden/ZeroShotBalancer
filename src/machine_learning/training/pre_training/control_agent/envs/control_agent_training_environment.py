@@ -2,8 +2,7 @@ import numpy as np
 
 from robot_environments.ControlAgentBaseEnv import ControlAgentBaseEnv
 
-"""
-Env for training on moving backward and forward
+# Env for training on moving backward and forward
 
 ON ATTEMPT 5:
 # Times (s) of each random turn. Offset from the speed changes (1, 3, 4.5, 5.5) so turns and speed changes
@@ -58,21 +57,27 @@ YAW_TURN_TIMES = (2.0, 4.0, 5.0, 10.0, 15.0, 20.0, 25.0)
 
 """
 # Why these?
+# STR-75: reward weights pulled out into a dict so each term can be tuned and logged per
+# run. RewardTermsCallback writes these to reward_weights.json beside the run's tensorboard
+# events, which is what identifies the experiment a historical training log belongs to.
 DEFAULT_REWARD_WEIGHTS = dict(
     alive=0.6,
     pitch=0.05, 
     speed_error=0.15, 
-    lean=5.0, 
+    lean=5.0,               # STR-97: halved from 10 so speed/heading tracking matter more
     direction_error=0.15, 
-    uneven_wheel_speed=0.007
+    uneven_wheel_speed=0.007  # STR-98 removed this; restored afterwards
 )
 
+# Seeded so target speeds, yaws and pitch offsets repeat across runs, making two
+# experiments comparable. Not tied to a ticket; added in commit 557e536.
 SEED = 42
 
 class ControlAgentTrainingEnv(ControlAgentBaseEnv):
     def __init__(self, reward_weights=None, **kwargs):
 
-        # Modularize reward weights and track reward terms separately
+        # STR-75: modularize reward weights and track reward terms separately, so Tensorboard
+        # shows each component instead of only the summed scalar
         self.reward_weights = {**DEFAULT_REWARD_WEIGHTS, **(reward_weights or {})}
         self.reward_terms = {}
 
@@ -101,6 +106,7 @@ class ControlAgentTrainingEnv(ControlAgentBaseEnv):
 
 
         ob, reward, terminated, truncated, info = ControlAgentBaseEnv.step(self, a)
+        # STR-75: RewardTermsCallback reads this to log each reward term separately
         info["reward_terms"] = self.reward_terms
 
         return ob, reward, terminated, truncated, info
@@ -117,6 +123,7 @@ class ControlAgentTrainingEnv(ControlAgentBaseEnv):
         else:
             self.delay_target_speed -= 10
 
+        # One random target heading per episode.
         self.delay_target_yaw = self.rng.uniform(low=-1*np.pi, high=np.pi)
         self.target_yaw = self.delay_target_yaw
 
@@ -138,6 +145,7 @@ class ControlAgentTrainingEnv(ControlAgentBaseEnv):
         dv_s = abs(dv_n)
 
         # Differences in direction (Direction/Heading Error), modded to fit between [-pi, pi] radians
+        # STR-96: uses get_yaw() (actual heading), not the earlier get_wheel_yaw()/get_yaw_dot()
         direction_error = (self.target_yaw - self.get_yaw() + np.pi) % (2*np.pi) - np.pi
 
         # Reward Shaping: What direction should the agent lean in to remain upright?
@@ -156,6 +164,8 @@ class ControlAgentTrainingEnv(ControlAgentBaseEnv):
             lean_dir = -1.0
 
         # Punish non-smooth turning
+        # Restored after STR-98 removed it; without it the agent spins through the target
+        # heading to farm the alive reward while briefly zeroing direction error
         uneven_wheel_speed = abs(self.target_yaw - self.get_wheel_yaw())
         
         # TODO: Need to normalize per- reward term. Requires running std dev and mean
@@ -167,7 +177,11 @@ class ControlAgentTrainingEnv(ControlAgentBaseEnv):
             "lean": lean_dir * pitch * self.reward_weights["lean"] * dv_s,
             "direction_error": -1 * self.reward_weights["direction_error"] * abs(direction_error),
             "uneven_wheel_speed": -1 * self.reward_weights["uneven_wheel_speed"] * uneven_wheel_speed
-        } # future plans are to change direction_error to: -1 * weight * (1 - cos(direction_error)) for smooth training with a maximum at 0
+        }
+        # STR-103 (not implemented): change direction_error to
+        # -1 * weight * (1 - cos(direction_error)) for a smooth penalty with a maximum at 0.
+        # Note this also rescales the term - the largest penalty goes from weight*pi to
+        # 2*weight - so the weight needs revisiting alongside it.
 
         
 

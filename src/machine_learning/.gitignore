@@ -1,3 +1,19 @@
 __pycache__/
 */movies/
 */logs/
+
+# Model weights: only each experiment's best model is tracked. Checkpoints are large,
+# reproducible from the logs, and there is one set per run - keep them local.
+**/models/**/*.zip
+**/models/**/*.onnx
+**/models/**/*.tflite
+!**/models/**/best_model.*
+
+# Videos are not tracked. They were 286 MB of this repo's 288 MB, and a single compare.py run
+# writes ~73 MB (two clips plus the side-by-side). Training and evaluation clips are written
+# locally as normal - post anything worth keeping to the Jira ticket for the experiment.
+*.mp4
+*.mov
+*.avi
+*.webm
+*.mkv
