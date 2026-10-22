@@ -80,11 +80,10 @@ class ControlAgentBaseEnv(MujocoEnv, utils.EzPickle):
         # called by init in parent class
         # normalize the action space to better support quantization later
 
-        # order of action space
-        # left wheel speed, right wheel speed
+        # order of action space Left, Right
         self.action_space = Box(
-            np.array([-1.0, -1.0]),
-            np.array([1.0, 1.0]),
+            np.array([-1.0, -1.0]), # left wheel speed
+            np.array([1.0, 1.0]),   # right wheel speed
             dtype=np.float32
         )
         return self.action_space
@@ -203,13 +202,13 @@ class ControlAgentBaseEnv(MujocoEnv, utils.EzPickle):
 
     def get_pitch(self) -> float:
         quat = self.data.body("robot_body").xquat
-        if quat[0] == 0:
+        if quat[1] == 0:
             return 0
 
-        rotation = Rotation.from_quat([quat[1], quat[2], quat[3], quat[0]])  # Quaternion order is [x, y, z, w]
+        rotation = Rotation.from_quat([quat[0], quat[1], quat[2], quat[3]], scalar_first=True)  # Quaternion order is [w, x, y, z] (scalar first)
         angles = rotation.as_euler('xyz', degrees=False)
         # print(angles)
-        return angles[0]
+        return angles[0] # extracted `X` Euler angle in radians
 
     def get_pitch_dot(self) -> float:
         angular = self.data.joint('robot_body_joint').qvel[-3:]
@@ -248,10 +247,10 @@ class ControlAgentBaseEnv(MujocoEnv, utils.EzPickle):
 
     def get_yaw(self) -> float:
         quat = self.data.body("robot_body").xquat
-        if quat[0] == 0:
-            return 0
+        # if quat[1] == 0: # Potential bug
+        #     return 0
 
-        rotation = Rotation.from_quat([quat[1], quat[2], quat[3], quat[0]])  # Quaternion order is [x, y, z, w]
+        rotation = Rotation.from_quat([quat[0], quat[1], quat[2], quat[3]], scalar_first=True)  # Quaternion order is [w, x, y, z], scalar-first order
         angles = rotation.as_euler('xyz', degrees=False)
         return angles[2]
 
@@ -268,7 +267,7 @@ class ControlAgentBaseEnv(MujocoEnv, utils.EzPickle):
         wheel_vel_l, wheel_vel_r = self.get_wheel_velocities()
 
         pitch_normalized = pitch / PITCH_MAX
-        pitch_dot_normalized = pitch_dot / PITCH_DOT_MAX
+        pitch_dot_normalized = pitch_dot / PITCH_DOT_MAX    # PITCH_DOT_MAX is currently 1.
         wheel_vel_l_normalized = wheel_vel_l / WHEEL_SPEED_MAX * 4
         wheel_vel_r_normalized = wheel_vel_r / WHEEL_SPEED_MAX * 4
         delta_wheel_speed_normalized = (self.target_wheel_speed - self.get_wheel_speed()) / WHEEL_SPEED_MAX * 4
@@ -277,9 +276,9 @@ class ControlAgentBaseEnv(MujocoEnv, utils.EzPickle):
         # -pi/pi boundary. RobotBaseEnv used (target_yaw - get_wheel_yaw()) / YAW_MAX * 3 here.
         delta_wheel_yaw_normalized = (self.target_yaw - self.get_yaw() + np.pi) % (2*np.pi) - np.pi
 
-        return np.array(
+        obs = np.array(
             [
-                pitch_normalized,
+                pitch_normalized, # values not yet normalized
                 pitch_dot_normalized,
                 wheel_vel_l_normalized,
                 wheel_vel_r_normalized,
@@ -288,6 +287,8 @@ class ControlAgentBaseEnv(MujocoEnv, utils.EzPickle):
             ],
             dtype=np.float32
         ).ravel()
+        # print(obs)
+        return obs
 
         # obs_clip = np.clip(obs, a_min = -1.0, a_max = 1.0)
         # print(obs_clip)
