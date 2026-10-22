@@ -216,6 +216,14 @@ def annotate(frame: np.ndarray, lines: list[str]) -> np.ndarray:
 @click.option('--seed', default=0)
 @click.option('--reset-grace', default=RESET_GRACE,
               help="seconds targets are held at 0 after a fall reset (0 = resume the schedule immediately)")
+@click.option('-x', '--xml', 'xml_file', default="base_world_env.xml",
+              help="world XML in training/robot_environments (e.g. base_world_calibrated.xml)")
+def video(model: str, output: str, duration: float | None, schedule_name: str, env_id: str, seed: int,
+          reset_grace: float, xml_file: str):
+    schedule = None if schedule_name == BUILTIN_SCHEDULE else load_schedule(schedule_name)
+    results = record_video(model, output, schedule, env_id, duration, seed, reset_grace, xml_file)
+    click.echo(f"Wrote {output}: {results['duration_s']:.0f}s, {results['falls']} fall(s), schedule={schedule_name}, "
+               f"xml={xml_file}")
 @click.option('--force', is_flag=True, default=False, help="overwrite an existing clip for this ticket and schedule")
 def video(ticket: str, model: str, output: Path | None, duration: float | None, schedule_name: str,
           env_id: str, seed: int, reset_grace: float, force: bool):
@@ -247,14 +255,15 @@ def video(ticket: str, model: str, output: Path | None, duration: float | None, 
 
 
 def record_video(model: str, output: str, schedule: list[list[float]] | None, env_id: str,
-                 duration: float | None = None, seed: int = 0, reset_grace: float = RESET_GRACE) -> dict:
+                duration: float | None = None, seed: int = 0, reset_grace: float = RESET_GRACE,
+                xml_file: str = "base_world_env.xml") -> dict:
     """
     Record a clip following `schedule` (None = the env's built-in schedule) and return tracking metrics.
     """
     if duration is None:
         duration = 30.0 if schedule is None else schedule[-1][0] + LAST_ENTRY_HOLD
-
-    env = gym.make(env_id, render_mode="rgb_array")
+    # Which world to load
+    env = gym.make(env_id, render_mode="rgb_array", xml_file=xml_file)
     robot = env.unwrapped
     policy = stable_baselines3.PPO.load(model, device="cpu")
     np.random.seed(seed)
