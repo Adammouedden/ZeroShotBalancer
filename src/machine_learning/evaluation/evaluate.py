@@ -5,6 +5,12 @@ Headless evaluation of trained balancing policies.
               report survival rate per side (training only ever sees one side).
   video:      record a continuous clip in ReferenceBaselineTrainingEnv (or ControlAgentTrainingEnv
               via --env) following a JSON speed / yaw schedule, resetting the robot whenever it falls.
+
+Every command takes the Jira ticket it is evaluating for (-out/--output_path) and writes its
+artifacts to experiments/<TICKET>/evaluation/, alongside that ticket's training artifacts.
+Without one, artifacts go to experiments/_unmapped/ - fine for an ad-hoc run, but it breaks
+the link between an evaluation and the training run it judges, so it warns.
+Pass -o/--output to write somewhere else instead.
 """
 import click
 import gymnasium as gym
@@ -27,6 +33,15 @@ import envs
 
 from robot_environments.base_world_env import BaseWorldEnv
 
+# STR-91: per-ticket artifact layout, shared with the training scripts so the training and
+# evaluation sides agree on where a ticket's artifacts go
+from visibility.experiment_tracking import (
+    Experiment,
+    JiraTicket,
+    TICKET_OPTION_HELP_OPTIONAL,
+    UNMAPPED_TICKET,
+)
+
 # control_agent's env package is also named `envs`, so load its module by path and register it here
 _control_env_path = TRAINING_DIR / "pre_training/control_agent/envs/control_agent_training_environment.py"
 _spec = importlib.util.spec_from_file_location("control_agent_training_environment", _control_env_path)
@@ -45,16 +60,43 @@ CONTROL_DT = 0.005  # 250 physics steps x 0.02ms per env step
 VIDEO_FPS = 50
 
 
+def ticket_option(fn):
+    """
+    -out/--output_path, on every evaluation command (see visibility.experiment_tracking).
+
+    STR-91: evaluation artifacts are filed under the ticket they evaluate, next to that
+    ticket's training artifacts. Optional here, unlike sb_rl.py: training is what produces the
+    artifacts an experiment is judged on, while an evaluation is often ad-hoc and has
+    experiments/_unmapped/ to fall back on.
+    """
+    return click.option(
+        '-out',
+        '--output_path',
+        'ticket',
+        default=UNMAPPED_TICKET,
+        show_default=True,
+        type=JiraTicket(),
+        help=TICKET_OPTION_HELP_OPTIONAL
+    )(fn)
+
+
 @click.group()
 def cli():
     pass
 
 
 @cli.command(help="Survival rate on Env03-v2 with blocks from the front and back")
+@ticket_option
 @click.option('-m', '--model', 'models', required=True, multiple=True, help="model .zip (repeat to compare)")
 @click.option('-n', '--episodes', default=50, help="episodes per model (split evenly between sides)")
+@click.option('-o', '--output', default=None, type=click.Path(path_type=Path),
+              help="results JSON (default: experiments/<TICKET>/evaluation/robustness.json)")
 @click.option('--seed', default=0)
-def robustness(models: tuple[str, ...], episodes: int, seed: int):
+def robustness(ticket: str, models: tuple[str, ...], episodes: int, output: Path | None, seed: int):
+    experiment = Experiment(ticket)
+    experiment.warn_if_unmapped()
+    summary = {}
+
     for model_path in models:
         env = gym.make("Env03-v2")
         model = stable_baselines3.PPO.load(model_path, device="cpu")
@@ -77,6 +119,7 @@ def robustness(models: tuple[str, ...], episodes: int, seed: int):
 
         click.echo(f"\n{model_path}")
         click.echo(f"  {'side':6s} {'survived':>10s} {'mean len':>10s} {'mean return':>12s}")
+        summary[str(model_path)] = {"episodes": episodes, "seed": seed, "max_episode_steps": max_len}
         for side, rows in list(results.items()) + [("all", results["front"] + results["back"])]:
             lengths = np.array([r[0] for r in rows])
             returns = np.array([r[1] for r in rows])
@@ -84,7 +127,17 @@ def robustness(models: tuple[str, ...], episodes: int, seed: int):
             click.echo(
                 f"  {side:6s} {survived:9.0f}% {lengths.mean():7.0f}/{max_len} {returns.mean():12.1f}"
             )
+            summary[str(model_path)][side] = {
+                "survived_pct": float(survived),
+                "mean_length": float(lengths.mean()),
+                "mean_return": float(returns.mean()),
+            }
         env.close()
+
+    output = output or experiment.robustness_path()
+    output.parent.mkdir(parents=True, exist_ok=True)
+    output.write_text(json.dumps(summary, indent=4) + "\n")
+    click.echo(f"\nWrote {output}")
 
 
 BUILTIN_SCHEDULE = "env01"
@@ -148,8 +201,10 @@ def annotate(frame: np.ndarray, lines: list[str]) -> np.ndarray:
 
 
 @cli.command(help="Record a continuous clip following a speed / yaw schedule, resetting whenever the robot falls")
+@ticket_option
 @click.option('-m', '--model', required=True, help="model .zip")
-@click.option('-o', '--output', default="movies/balance_eval.mp4")
+@click.option('-o', '--output', default=None, type=click.Path(path_type=Path),
+              help="output .mp4 (default: experiments/<TICKET>/evaluation/video/<schedule>.mp4)")
 @click.option('-d', '--duration', type=float, default=None,
               help=f"clip length in simulated seconds (default: last schedule entry + {LAST_ENTRY_HOLD:.0f} s, "
                    f"or 30 s for {BUILTIN_SCHEDULE})")
@@ -169,6 +224,34 @@ def video(model: str, output: str, duration: float | None, schedule_name: str, e
     results = record_video(model, output, schedule, env_id, duration, seed, reset_grace, xml_file)
     click.echo(f"Wrote {output}: {results['duration_s']:.0f}s, {results['falls']} fall(s), schedule={schedule_name}, "
                f"xml={xml_file}")
+@click.option('--force', is_flag=True, default=False, help="overwrite an existing clip for this ticket and schedule")
+def video(ticket: str, model: str, output: Path | None, duration: float | None, schedule_name: str,
+          env_id: str, seed: int, reset_grace: float, force: bool):
+    experiment = Experiment(ticket)
+    experiment.warn_if_unmapped()
+    schedule = None if schedule_name == BUILTIN_SCHEDULE else load_schedule(schedule_name)
+
+    if output is None:
+        output = experiment.video_path(schedule_name)
+        if output.exists() and not force:
+            raise click.UsageError(
+                f"{output} already exists for this experiment. Pass --force to overwrite it, "
+                "or -o to write elsewhere."
+            )
+    output.parent.mkdir(parents=True, exist_ok=True)
+
+    results = record_video(str(model), str(output), schedule, env_id, duration, seed, reset_grace)
+
+    experiment.write_metadata(
+        command="evaluate video",
+        model=str(model),
+        environment=env_id,
+        schedule=schedule_name,
+        seed=seed,
+        output=str(output),
+        results=results,
+    )
+    click.echo(f"Wrote {output}: {results['duration_s']:.0f}s, {results['falls']} fall(s), schedule={schedule_name}")
 
 
 def record_video(model: str, output: str, schedule: list[list[float]] | None, env_id: str,
@@ -239,12 +322,17 @@ def record_video(model: str, output: str, schedule: list[list[float]] | None, en
 
 
 @cli.command(help="Record the robustness test (same seeds, alternating block sides) as a video")
+@ticket_option
 @click.option('-m', '--model', required=True, help="model .zip")
-@click.option('-o', '--output', default="movies/robustness.mp4")
+@click.option('-o', '--output', default=None, type=click.Path(path_type=Path),
+              help="output .mp4 (default: experiments/<TICKET>/evaluation/robustness.mp4)")
 @click.option('-n', '--episodes', default=50)
 @click.option('--speed', default=10, help="playback speed multiplier (1 = real time)")
 @click.option('--seed', default=0)
-def blocks(model: str, output: str, episodes: int, speed: int, seed: int):
+def blocks(ticket: str, model: str, output: Path | None, episodes: int, speed: int, seed: int):
+    experiment = Experiment(ticket)
+    experiment.warn_if_unmapped()
+    output = output or experiment.robustness_path(suffix=".mp4")
     env = gym.make("Env03-v2", render_mode="rgb_array")
     robot = env.unwrapped
     policy = stable_baselines3.PPO.load(model, device="cpu")
@@ -279,6 +367,15 @@ def blocks(model: str, output: str, episodes: int, speed: int, seed: int):
             survived[side] += length >= max_len
 
     env.close()
+    experiment.write_metadata(
+        command="evaluate blocks",
+        model=str(model),
+        environment="Env03-v2",
+        episodes=episodes,
+        seed=seed,
+        output=str(output),
+        results={"survived": survived, "played": played},
+    )
     click.echo(f"Wrote {output}: front {survived['front']}/{played['front']}, "
                f"back {survived['back']}/{played['back']} survived")
 
