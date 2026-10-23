@@ -103,7 +103,7 @@ def side_by_side(video_a: Path, video_b: Path, labels: tuple[str, str], output: 
 @click.option('--force', is_flag=True, default=False,
               help="overwrite an existing comparison for this ticket and schedule")
 def compare(ticket: str, model_a: Path, model_b: Path | None, env_a: str | None, env_b: str | None,
-            schedule_name: str, seed: int, force: bool):
+            schedule_name: str, seed: int, force: bool, xml_a: str, xml_b: str):
     experiment = Experiment(ticket)
     experiment.warn_if_unmapped()
     # STR-91: the ticket's own model is what the experiment is about, so it is model B by default
