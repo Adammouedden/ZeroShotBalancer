@@ -266,7 +266,7 @@ class ControlAgentBaseEnv(MujocoEnv, utils.EzPickle):
 
         pitch_normalized = pitch / PITCH_MAX
         pitch_dot_normalized = pitch_dot / PITCH_DOT_MAX    # PITCH_DOT_MAX is currently 1.
-        wheel_vel_l_normalized = wheel_vel_l / WHEEL_SPEED_MAX * 4
+        wheel_vel_l_normalized = wheel_vel_l / WHEEL_SPEED_MAX * 4 # TODO why???
         wheel_vel_r_normalized = wheel_vel_r / WHEEL_SPEED_MAX * 4
         delta_wheel_speed_normalized = (self.target_wheel_speed - self.get_wheel_speed()) / WHEEL_SPEED_MAX * 4
         delta_wheel_yaw_normalized = (self.target_yaw - self.get_yaw() + np.pi) % (2*np.pi) - np.pi
@@ -288,3 +288,5 @@ class ControlAgentBaseEnv(MujocoEnv, utils.EzPickle):
         # obs_clip = np.clip(obs, a_min = -1.0, a_max = 1.0)
         # print(obs_clip)
         # return obs_clip
+
+    
