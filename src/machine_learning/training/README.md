@@ -18,8 +18,9 @@ The script refuses to overwrite a populated model directory and saves a final
 checkpoint as well as evaluation-selected best and periodic checkpoints. See the
 [reference training instructions](reference_baseline/README.md#calibrated-training-str-118)
 for training, TensorBoard, and evaluation commands. Both policies completed 219,136
-steps and a 60-second calibrated hard-schedule evaluation: reference recorded 9
-falls and control recorded 25. Control remains the baseline for subsequent
+steps and two 60-second calibrated evaluations (seed 0). On the hard schedule,
+reference recorded 9 falls and control recorded 25; on the smooth schedule,
+reference recorded 2 falls and control recorded zero. Control remains the baseline for subsequent
 experiments. See the [STR-118 results and implementation summary](../experiments/STR-118/PR_DRAFT.md#results)
 for the final comparison and its limits.
 

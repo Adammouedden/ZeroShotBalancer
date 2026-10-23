@@ -63,6 +63,50 @@
                 "max_reward": 9.061450455170375,
                 "total_reward": 8955.147798394892
             }
+        },
+        {
+            "started": "2026-10-23T14:15:11-04:00",
+            "command": "evaluate video",
+            "model": "training/reference_baseline/models/calibrated_run2/ReferenceBaselineTrainingEnv_PPO/best_model.zip",
+            "environment": "ReferenceBaselineTrainingEnv",
+            "xml_file": "base_world_calibrated.xml",
+            "schedule": "smooth_tracking_schedule.json",
+            "seed": 0,
+            "output": "experiments\\STR-118\\evaluation\\video\\ReferenceBaselineTrainingEnv\\base_world_calibrated\\calibrated_run2\\smooth_tracking_schedule.mp4",
+            "results": {
+                "xml_file": "base_world_calibrated.xml",
+                "observation_normalization": "none",
+                "duration_s": 60.0,
+                "reset_grace_s": 1.0,
+                "falls": 2,
+                "mean_speed_error": 10.730121033036859,
+                "mean_yaw_error": 2.2357149446495472,
+                "mean_abs_pitch_deg": 1.2180972520988465,
+                "max_reward": 2.1237120627819244,
+                "total_reward": 7114.387793831177
+            }
+        },
+        {
+            "started": "2026-10-23T14:19:53-04:00",
+            "command": "evaluate video",
+            "model": "experiments/STR-118/training/models/ControlAgentTrainingEnv_PPO/best_model.zip",
+            "environment": "ControlAgentTrainingEnv",
+            "xml_file": "base_world_calibrated.xml",
+            "schedule": "smooth_tracking_schedule.json",
+            "seed": 0,
+            "output": "experiments\\STR-118\\evaluation\\video\\ControlAgentTrainingEnv\\base_world_calibrated\\smooth_tracking_schedule.mp4",
+            "results": {
+                "xml_file": "base_world_calibrated.xml",
+                "observation_normalization": "checkpoint",
+                "duration_s": 60.0,
+                "reset_grace_s": 1.0,
+                "falls": 0,
+                "mean_speed_error": 7.7383308020944845,
+                "mean_yaw_error": 0.14634876957351464,
+                "mean_abs_pitch_deg": 1.2068628403002513,
+                "max_reward": 0.6023667121901739,
+                "total_reward": 6357.663052398413
+            }
         }
     ]
 }

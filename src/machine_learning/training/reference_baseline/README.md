@@ -14,8 +14,10 @@ Only the files needed to train the policy were copied:
 **Completed:** 219,136 training steps, with the best checkpoint selected at step
 20,000 and a final checkpoint at step 219,136. The selected best model's 60-second
 hard-schedule evaluation (seed 0) recorded 9 falls, mean absolute wheel-speed error
-24.861 rad/s, and mean absolute pitch 2.333 degrees. These are simulation results;
-the zero-fall objective was not achieved.
+24.861 rad/s, and mean absolute pitch 2.333 degrees. The same best checkpoint's
+smooth-schedule evaluation (60 seconds, seed 0) recorded 2 falls, speed error
+10.730 rad/s, and pitch 1.218 degrees. These are simulation results; reference did
+not achieve zero falls on either schedule.
 
 The commands below document the completed run. No restart is needed; the existing
 model directory and evaluation files are protected against overwriting.
@@ -61,6 +63,11 @@ The completed video and matching JSON metrics are in the explicit `calibrated_ru
 evaluation directory, with matching results in STR-118 metadata. Repeating an
 evaluation requires a different output path or an intentional `--force` overwrite.
 See the [final artifact audit](../../experiments/STR-118/AUDIT.json) for verification.
+
+The completed smooth evaluation uses the same model and settings with
+`-s smooth_tracking_schedule.json` and output filename `smooth_tracking_schedule.mp4`
+in that same evaluation directory. Both command lines and the reference/control
+comparison are recorded in the [STR-118 results](../../experiments/STR-118/PR_DRAFT.md#results).
 
 ## Earlier adaptation notes
 

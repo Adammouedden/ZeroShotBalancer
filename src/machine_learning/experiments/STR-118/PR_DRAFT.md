@@ -4,9 +4,9 @@ STR-118: Retrain reference and control policies on the calibrated robot
 
 The physical robot now has a calibrated MuJoCo model, introduced in PR #8. The training entry points still selected the original world, so rerunning them would not automatically train policies for the calibrated robot. The control environment also contained an unfinished draft block that prevented import, and its observation-normalization statistics were not preserved with saved policies.
 
-This change connects reference and control training to the calibrated scene, gives both policies independent training and evaluation simulators, preserves the control policy's preprocessing in its checkpoints, and repairs the evaluation commands. Both use a 219,136-step training budget and the same calibrated hard-schedule evaluation protocol.
+This change connects reference and control training to the calibrated scene, gives both policies independent training and evaluation simulators, preserves the control policy's preprocessing in its checkpoints, and repairs the evaluation commands. Both use a 219,136-step training budget and the same evaluation protocol on the hard and smooth schedules.
 
-**Both policies completed 219,136 training steps and the 60-second evaluation.** The selected reference checkpoint fell 9 times and control fell 25 times. Control had lower speed error, while reference had fewer falls and lower pitch error. Neither achieved the zero-fall objective; these results establish a starting point for future experiments.
+**Both policies completed 219,136 training steps and two 60-second evaluations.** On the hard schedule, reference fell 9 times and control fell 25 times. On the smooth schedule, reference fell 2 times and control had zero falls. Control had lower mean speed error on both schedules. These results establish a starting point for future experiments; the hard-schedule zero-fall objective remains unmet.
 
 ## Changes
 
@@ -122,10 +122,10 @@ Both training environments retain the existing changing speed schedule and +/-0.
 
 | Setting | Value | Reason |
 | --- | --- | --- |
-| Schedule | `mixed_schedule_hard.json` | Existing team benchmark containing speed reversals and yaw-target changes. It was not softened to improve these results. |
+| Schedules | `mixed_schedule_hard.json` and `smooth_tracking_schedule.json` | Both existing schedules are used unchanged. The smooth schedule uses smaller target changes, held constant between entries; it is not continuous interpolation. |
 | World | `base_world_calibrated.xml` for both | Tests the new policies in the same calibrated scene. |
 | Duration | 60 simulated seconds each | Last scheduled change at 58 seconds plus the evaluator's existing 2-second hold. |
-| Evaluation seed | 0 | Used by both completed evaluations. One seed is an initial check, not statistical qualification. |
+| Evaluation seed | 0 | Used by all four completed evaluations. One seed is an initial check, not statistical qualification. |
 | Policy inference | Deterministic | Uses the policy's deterministic action prediction during evaluation. |
 | Reset grace | 1 second | Existing protocol temporarily holds targets at zero after a fall reset. Metrics include these recovery intervals. |
 | Video rate | 50 frames/s | Existing evaluator setting, giving 3,000 frames for each 60-second recording. |
@@ -140,13 +140,27 @@ Both TensorBoard logs and final checkpoints reach 219,136 steps. The evaluated b
 | Selected best checkpoint step | 20,000 | 80,000 |
 | Final-step checkpoint available | Yes, `final_model.zip` at 219,136 | Yes, `final_model.zip` at 219,136 |
 | Evaluation duration / seed | 60 s / 0 | 60 s / 0 |
-| Falls | **9** | **25** |
-| Mean absolute wheel-speed error (rad/s) | 24.861 | 14.074 |
-| Mean absolute pitch (degrees) | 2.333 | 5.107 |
 
-Control follows target speed more closely on average, but reference has fewer falls and smaller pitch deviations. Neither reaches the experiment log's zero-fall target. This single evaluation does not establish overall superiority or hardware readiness.
+Both schedules use these same best checkpoints:
+
+| Schedule | Policy | Falls | Mean absolute wheel-speed error (rad/s) | Mean absolute pitch (degrees) |
+| --- | --- | ---: | ---: | ---: |
+| Hard | Reference | 9 | 24.861 | 2.333 |
+| Hard | Control | 25 | 14.074 | 5.107 |
+| Smooth | Reference | 2 | 10.730 | 1.218 |
+| Smooth | Control | **0** | **7.738** | 1.207 |
+
+Control has lower mean speed error on both schedules. On the hard schedule, reference has fewer falls and smaller pitch deviations. On the smooth schedule, control has no falls, compared with two for reference, and their mean pitch errors are similar. One evaluation seed per schedule does not establish overall superiority or hardware readiness.
 
 The JSON also contains yaw error and reward totals. Those must not be ranked across policies: the reference yaw metric measures a wheel-speed differential, while control measures wrapped heading error in radians; reward definitions also differ. The comparison tool already marks these cross-environment metrics as not comparable.
+
+Control's mean heading error is 0.740 rad (42.40 degrees) on the hard schedule and
+0.146 rad (8.39 degrees) on the smooth schedule. These figures do not establish that
+control tracks speed better than heading: wheel-speed error and heading error are
+different quantities with different units. Such a ranking would require agreed
+speed/heading tolerances and measurements such as time within tolerance or settling
+time. The earlier experiment log's description of good speed tracking was qualitative
+and predates calibrated retraining.
 
 ## Verification
 
@@ -155,16 +169,16 @@ The JSON also contains yaw error and reward totals. Those must not be ranked acr
 - The saved reference test checkpoint also passed a disposable 0.1-second run through the video evaluation CLI, producing both MP4 and JSON with the calibrated XML.
 - Audited all 14 final-run checkpoint archives, both TensorBoard logs through 219,136 steps, and best-checkpoint selection at each run's maximum recorded training-evaluation reward. Reference's saved evaluation archive agrees with TensorBoard and contains ten evaluations of five episodes each.
 - Loaded both production best checkpoints on CPU and verified finite parameters and predictions on a calibrated reset. All reference checkpoints identify the calibrated XML and independent evaluation; all control checkpoints contain matching normalization statistics, frozen during inference.
-- Confirmed both evaluation JSON files agree with STR-118 metadata. Each video contains 3,000 frames at 50 fps, covering 60 seconds. The original reference model and completed control artifacts retain their verified hashes.
+- Confirmed all four evaluation JSON files agree with STR-118 metadata. Each video contains 3,000 frames at 50 fps, covering 60 seconds. Smooth-schedule evaluations use the same verified best checkpoint hashes as the hard-schedule evaluations. The original reference model and completed control artifacts retain their verified hashes.
 - Earlier disposable checks exercised the control training CLI, individual video evaluation, and a two-second spawned comparison with video stitching. These fixtures are not STR-118 performance results.
 
 The completed artifact audit is recorded in [AUDIT.json](AUDIT.json). Verification inspected saved artifacts and performed reset/inference checks; it did not repeat production training or full evaluation. Source hashes describe files at audit time, not launch snapshots.
 
 ## Limitations and follow-up
 
-1. **The hard schedule exceeds calibrated motor command limits.** It requests speeds up to +/-60 rad/s, while the calibrated velocity-actuator command range is +/-20.6 rad/s. The existing training target schedule also reaches this region. Large speed errors therefore include demands outside the configured command range. A hardware-feasible schedule is needed before interpreting tracking error as deployable performance. These results do not identify the cause of every fall.
+1. **The hard schedule exceeds calibrated motor command limits.** It requests speeds up to +/-60 rad/s, while the calibrated velocity-actuator command range is +/-20.6 rad/s. The existing training target schedule also reaches this region. The smooth schedule uses speed targets from -10 to 20 rad/s, within that command range, but simultaneous turning and transients still require physical validation. These results do not identify the cause of every fall or establish hardware readiness.
 2. **One training run and one evaluation seed per policy are insufficient for confidence intervals or general performance claims.** Training seeds are unset; equal budgets do not imply identical randomness or identical learning conditions.
-3. **Checkpoint choice matters.** Best models are selected by separate reward definitions and come from different steps. Both recorded hard-schedule evaluations use best checkpoints; final checkpoints are available but were not evaluated in these recordings.
+3. **Checkpoint choice matters.** Best models are selected by separate reward definitions and come from different steps. All four recorded evaluations use best checkpoints; final checkpoints are available but were not evaluated in these recordings.
 4. **The existing evaluator protocol is preserved.** For a scheduled evaluation, the action is predicted from the preceding observation before the next target is assigned. This timing convention and the differing yaw definitions should be reviewed before making stronger tracking claims.
 5. **This is an SB3 simulation workflow.** ONNX/TFLite export and physical-hardware inference have not been updated or validated to carry the control normalization state. A model ZIP that evaluates correctly here is not by itself a validated hardware-deployment package.
 
@@ -199,6 +213,13 @@ Individual evaluations, from `src/machine_learning/`:
 ```powershell
 uv run python evaluation/evaluate.py video -out STR-118 -m training/reference_baseline/models/calibrated_run2/ReferenceBaselineTrainingEnv_PPO/best_model.zip -e ReferenceBaselineTrainingEnv -x base_world_calibrated.xml -s mixed_schedule_hard.json --seed 0 -o experiments/STR-118/evaluation/video/ReferenceBaselineTrainingEnv/base_world_calibrated/calibrated_run2/mixed_schedule_hard.mp4
 uv run python evaluation/evaluate.py video -out STR-118 -m experiments/STR-118/training/models/ControlAgentTrainingEnv_PPO/best_model.zip -e ControlAgentTrainingEnv -x base_world_calibrated.xml -s mixed_schedule_hard.json
+```
+
+Smooth-schedule evaluations, from the same directory:
+
+```powershell
+uv run python evaluation/evaluate.py video -out STR-118 -m training/reference_baseline/models/calibrated_run2/ReferenceBaselineTrainingEnv_PPO/best_model.zip -e ReferenceBaselineTrainingEnv -x base_world_calibrated.xml -s smooth_tracking_schedule.json --seed 0 -o experiments/STR-118/evaluation/video/ReferenceBaselineTrainingEnv/base_world_calibrated/calibrated_run2/smooth_tracking_schedule.mp4
+uv run python evaluation/evaluate.py video -out STR-118 -m experiments/STR-118/training/models/ControlAgentTrainingEnv_PPO/best_model.zip -e ControlAgentTrainingEnv -x base_world_calibrated.xml -s smooth_tracking_schedule.json --seed 0 -o experiments/STR-118/evaluation/video/ControlAgentTrainingEnv/base_world_calibrated/smooth_tracking_schedule.mp4
 ```
 
 The recorded outputs are preserved. A deliberate rerun should use a new `-o` destination instead of replacing this evidence. The control README also documents the optional side-by-side comparison command; no full STR-118 comparison video is claimed by this PR description.

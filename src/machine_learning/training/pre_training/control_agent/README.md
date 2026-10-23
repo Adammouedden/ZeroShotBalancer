@@ -28,6 +28,13 @@ evaluation are retained as the baseline for future experiments; the
 document the external comparison. The commands below describe the completed workflow
 and do not need to be repeated.
 
+Control's best checkpoint was evaluated on both schedules for 60 seconds with seed 0.
+The hard schedule recorded 25 falls, speed error 14.074 rad/s, and heading error
+0.740 rad (42.40 degrees). The smooth schedule recorded zero falls, speed error
+7.738 rad/s, and heading error 0.146 rad (8.39 degrees). Speed and heading errors
+have different units, so these values do not rank speed tracking against heading
+tracking. See the [full results](../../../experiments/STR-118/PR_DRAFT.md#results).
+
 Run the following commands from `src/machine_learning/`. Training now selects
 `base_world_calibrated.xml`, which includes `robot_calibrated.xml`, and prints its
 resolved path at startup. Omitting `-m` starts a fresh policy.
@@ -73,6 +80,11 @@ Both evaluations use STR-118. Each saves a video and JSON metrics under
 reference run uses the `calibrated_run2/` subdirectory. Repeating the same evaluation requires `--force` or
 a different `-o` output path. Normalized policies automatically restore their saved
 statistics, which remain frozen throughout evaluation.
+
+Smooth evaluations use the same commands with `-s smooth_tracking_schedule.json`;
+for the explicit reference output, also change the filename to
+`smooth_tracking_schedule.mp4`. Both smooth JSON/video pairs are already present
+beside their corresponding hard-schedule outputs.
 
 To record a side-by-side comparison of the two calibrated policies:
 

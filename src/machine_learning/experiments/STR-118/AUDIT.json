@@ -1,7 +1,7 @@
 {
   "ticket": "STR-118",
   "audit_date": "2026-10-23",
-  "method": "Read final checkpoint metadata, TensorBoard scalars, evaluation NPZ, JSON, and recorded video frames; loaded both best policies for a calibrated reset and prediction. No training or full evaluation rerun. Source hashes describe files at audit time, not launch snapshots.",
+  "method": "Read final checkpoint metadata, TensorBoard scalars, evaluation NPZ, JSON, and recorded video frames; loaded both best policies for a calibrated reset and prediction. No training or full evaluation rerun. Source hashes describe files at audit time, not launch snapshots. Added smooth-schedule JSON/metadata/model-hash and recorded-video checks; no new rollout was performed for this audit update.",
   "policies": {
     "reference": {
       "last_logged_step": 219136,
@@ -222,7 +222,66 @@
         "sha256": "651c124457562fd03d54eaebdfab1b8f2d751ffd704a5934846773642098195c"
       },
       "metadata_matches_result_json": true,
-      "best_checkpoint_load_and_inference": "passed; finite weights, observation and action on calibrated reset; control normalization frozen"
+      "best_checkpoint_load_and_inference": "passed; finite weights, observation and action on calibrated reset; control normalization frozen",
+      "evaluations": {
+        "mixed_schedule_hard.json": {
+          "evaluation": {
+            "model": "training/reference_baseline/models/calibrated_run2/ReferenceBaselineTrainingEnv_PPO/best_model.zip",
+            "environment": "ReferenceBaselineTrainingEnv",
+            "schedule": "mixed_schedule_hard.json",
+            "seed": 0,
+            "xml_file": "base_world_calibrated.xml",
+            "observation_normalization": "none",
+            "duration_s": 60.0,
+            "reset_grace_s": 1.0,
+            "falls": 9,
+            "mean_speed_error": 24.860642160815807,
+            "mean_yaw_error": 2.1707315924610624,
+            "mean_abs_pitch_deg": 2.3329070550145405,
+            "max_reward": 9.061450455170375,
+            "total_reward": 8955.147798394892
+          },
+          "evaluation_json_path": "experiments/STR-118/evaluation/video/ReferenceBaselineTrainingEnv/base_world_calibrated/calibrated_run2/mixed_schedule_hard.json",
+          "evaluation_json_sha256": "ec6531f41fd87bef44c2822a9dd5af56594b529fa206f437885068a9dfd588cc",
+          "video": {
+            "path": "experiments/STR-118/evaluation/video/ReferenceBaselineTrainingEnv/base_world_calibrated/calibrated_run2/mixed_schedule_hard.mp4",
+            "frames": 3000,
+            "seconds": 60.0,
+            "fps": 50.0,
+            "sha256": "651c124457562fd03d54eaebdfab1b8f2d751ffd704a5934846773642098195c"
+          },
+          "metadata_matches_result_json": true
+        },
+        "smooth_tracking_schedule.json": {
+          "evaluation": {
+            "model": "training/reference_baseline/models/calibrated_run2/ReferenceBaselineTrainingEnv_PPO/best_model.zip",
+            "environment": "ReferenceBaselineTrainingEnv",
+            "schedule": "smooth_tracking_schedule.json",
+            "seed": 0,
+            "xml_file": "base_world_calibrated.xml",
+            "observation_normalization": "none",
+            "duration_s": 60.0,
+            "reset_grace_s": 1.0,
+            "falls": 2,
+            "mean_speed_error": 10.730121033036859,
+            "mean_yaw_error": 2.2357149446495472,
+            "mean_abs_pitch_deg": 1.2180972520988465,
+            "max_reward": 2.1237120627819244,
+            "total_reward": 7114.387793831177
+          },
+          "evaluation_json_path": "experiments/STR-118/evaluation/video/ReferenceBaselineTrainingEnv/base_world_calibrated/calibrated_run2/smooth_tracking_schedule.json",
+          "evaluation_json_sha256": "c06555844a1aea66b0289cd1339199d94077d656c5b22b93b87c5090483da791",
+          "model_sha256": "ef3f10655074b72910694bd3a8342f464007e5c7c5101d123c0db957b547be91",
+          "video": {
+            "path": "experiments/STR-118/evaluation/video/ReferenceBaselineTrainingEnv/base_world_calibrated/calibrated_run2/smooth_tracking_schedule.mp4",
+            "frames": 3000,
+            "fps": 50.0,
+            "seconds": 60.0,
+            "sha256": "f37d90c1f0c6865528aabf42dc68634cdd25f472793c3147da13745488c640d8"
+          },
+          "metadata_matches_result_json": true
+        }
+      }
     },
     "control": {
       "last_logged_step": 219136,
@@ -454,7 +513,66 @@
         "sha256": "78d867ea8ff287231290350fd4f902f6b1d7da24ff3e99c52ddc63bbc52267df"
       },
       "metadata_matches_result_json": true,
-      "best_checkpoint_load_and_inference": "passed; finite weights, observation and action on calibrated reset; control normalization frozen"
+      "best_checkpoint_load_and_inference": "passed; finite weights, observation and action on calibrated reset; control normalization frozen",
+      "evaluations": {
+        "mixed_schedule_hard.json": {
+          "evaluation": {
+            "model": "experiments/STR-118/training/models/ControlAgentTrainingEnv_PPO/best_model.zip",
+            "environment": "ControlAgentTrainingEnv",
+            "schedule": "mixed_schedule_hard.json",
+            "seed": 0,
+            "xml_file": "base_world_calibrated.xml",
+            "observation_normalization": "checkpoint",
+            "duration_s": 60.0,
+            "reset_grace_s": 1.0,
+            "falls": 25,
+            "mean_speed_error": 14.074314580362776,
+            "mean_yaw_error": 0.740083272151424,
+            "mean_abs_pitch_deg": 5.106583880068923,
+            "max_reward": 4.6380059175522055,
+            "total_reward": 7709.764417247336
+          },
+          "evaluation_json_path": "experiments/STR-118/evaluation/video/ControlAgentTrainingEnv/base_world_calibrated/mixed_schedule_hard.json",
+          "evaluation_json_sha256": "9d6fdf7d3bb3573a78ba0e4559bb1a6126758d73d141619ffab25258b4bd7ef7",
+          "video": {
+            "path": "experiments/STR-118/evaluation/video/ControlAgentTrainingEnv/base_world_calibrated/mixed_schedule_hard.mp4",
+            "frames": 3000,
+            "seconds": 60.0,
+            "fps": 50.0,
+            "sha256": "78d867ea8ff287231290350fd4f902f6b1d7da24ff3e99c52ddc63bbc52267df"
+          },
+          "metadata_matches_result_json": true
+        },
+        "smooth_tracking_schedule.json": {
+          "evaluation": {
+            "model": "experiments/STR-118/training/models/ControlAgentTrainingEnv_PPO/best_model.zip",
+            "environment": "ControlAgentTrainingEnv",
+            "schedule": "smooth_tracking_schedule.json",
+            "seed": 0,
+            "xml_file": "base_world_calibrated.xml",
+            "observation_normalization": "checkpoint",
+            "duration_s": 60.0,
+            "reset_grace_s": 1.0,
+            "falls": 0,
+            "mean_speed_error": 7.7383308020944845,
+            "mean_yaw_error": 0.14634876957351464,
+            "mean_abs_pitch_deg": 1.2068628403002513,
+            "max_reward": 0.6023667121901739,
+            "total_reward": 6357.663052398413
+          },
+          "evaluation_json_path": "experiments/STR-118/evaluation/video/ControlAgentTrainingEnv/base_world_calibrated/smooth_tracking_schedule.json",
+          "evaluation_json_sha256": "fe4584513ec0c397a9d6640723ae0aa45ec030177eff180857ed7bf079acf4dd",
+          "model_sha256": "a503a369246bf659954e4d2b3a4ddb02fede4b0d5207d2e51d4ce178e221dc25",
+          "video": {
+            "path": "experiments/STR-118/evaluation/video/ControlAgentTrainingEnv/base_world_calibrated/smooth_tracking_schedule.mp4",
+            "frames": 3000,
+            "fps": 50.0,
+            "seconds": 60.0,
+            "sha256": "358e6a5b276ad86248af246bfd7e5f2b337a1bb7e7a0c693517a338f6b8e39bc"
+          },
+          "metadata_matches_result_json": true
+        }
+      }
     }
   },
   "current_source_sha256": {
@@ -470,7 +588,8 @@
     "training/visibility/observation_normalization.py": "6e1cc9c4d058451cc6c518a347e14d75ebf87f3602047eab004cd4b49182697b",
     "evaluation/evaluate.py": "b93cfae4e89475321be09b63e1f877f8ec14b192c967495d7c580445038c5eb9",
     "evaluation/compare.py": "6ac5db023c02a64f4419b8987c926f2f82fe4b5e3532c2c7871d7510681311d4",
-    "evaluation/mixed_schedule_hard.json": "56d690d1410a6186e5bca39efd8a4984a13b61980ad1363191bed73b1697b0ce"
+    "evaluation/mixed_schedule_hard.json": "56d690d1410a6186e5bca39efd8a4984a13b61980ad1363191bed73b1697b0ce",
+    "evaluation/smooth_tracking_schedule.json": "0d3c9c547e6883c24c4a4ec41d7c64e3fef0e2a699f586d218722b6e74a7ba30"
   },
   "original_reference_checkpoint_sha256": "9bb72b08f45be7e043d000327cf79a67bb45914826685aa7380a5afd2c620f82",
   "evaluation_schedule": [
@@ -576,14 +695,15 @@
     ]
   ],
   "limitations": [
-    "Single evaluation seed and one selected training run per policy; neither achieves zero falls.",
+    "One evaluation seed per policy per schedule. Control has zero falls on the smooth schedule; neither policy has zero falls on the hard schedule.",
     "Reference and control yaw errors and reward totals use different definitions and are not directly comparable.",
     "PPO training seeds are unset; equal budgets do not imply identical randomness.",
     "Hard schedule requests speeds up to +/-60 rad/s, beyond calibrated actuator command limits +/-20.6 rad/s.",
     "Checkpoint XML identifiers do not snapshot XML contents; source/XML/schedule hashes were collected after the runs.",
     "Best checkpoints are selected using policy-specific rewards; final checkpoints were not evaluated in the recorded hard-schedule videos.",
     "Scheduled evaluation predicts the next action before assigning the next target; this existing protocol is retained.",
-    "ONNX/TFLite and hardware preprocessing for normalized control are not qualified by this audit."
+    "ONNX/TFLite and hardware preprocessing for normalized control are not qualified by this audit.",
+    "Wheel-speed error (rad/s) and control heading error (rad) are different quantities; their raw means do not establish which task is tracked better. No agreed tolerance-based success rates or settling-time measurements were recorded."
   ],
   "implementation_checks": {
     "targeted_tests_passed": 7,
@@ -592,5 +712,287 @@
     "reference_fixture_video_seconds": 0.1,
     "fixture_artifacts_are_performance_results": false
   },
-  "metadata_sha256": "bb0d64d26992aa65c8ab2a1e99c96e0f6de059b39bd0a13395757f6110abd583"
+  "metadata_sha256": "8cc6950013d365fc2713707bcd159a889a003311da08d243a81f5d1d270a3478",
+  "evaluation_schedules": {
+    "mixed_schedule_hard.json": {
+      "path": "evaluation/mixed_schedule_hard.json",
+      "sha256": "56d690d1410a6186e5bca39efd8a4984a13b61980ad1363191bed73b1697b0ce",
+      "entries": [
+        [
+          0,
+          0,
+          0
+        ],
+        [
+          2,
+          40,
+          0
+        ],
+        [
+          5,
+          40,
+          1.5708
+        ],
+        [
+          8,
+          -40,
+          1.5708
+        ],
+        [
+          11,
+          -40,
+          -1.5708
+        ],
+        [
+          14,
+          0,
+          3.14159
+        ],
+        [
+          17,
+          60,
+          3.14159
+        ],
+        [
+          20,
+          60,
+          0.7854
+        ],
+        [
+          23,
+          -60,
+          -0.7854
+        ],
+        [
+          26,
+          0,
+          0
+        ],
+        [
+          29,
+          20,
+          2.3562
+        ],
+        [
+          32,
+          20,
+          -2.3562
+        ],
+        [
+          35,
+          -20,
+          0
+        ],
+        [
+          38,
+          50,
+          1.0472
+        ],
+        [
+          41,
+          -50,
+          -1.0472
+        ],
+        [
+          44,
+          0,
+          1.5708
+        ],
+        [
+          47,
+          45,
+          -1.5708
+        ],
+        [
+          50,
+          -45,
+          3.14159
+        ],
+        [
+          53,
+          30,
+          0
+        ],
+        [
+          58,
+          0,
+          0
+        ]
+      ],
+      "target_assignment": "piecewise constant, held until the next entry",
+      "speed_target_range_rad_s": [
+        -60,
+        60
+      ],
+      "target_yaw_range": [
+        -2.3562,
+        3.14159
+      ]
+    },
+    "smooth_tracking_schedule.json": {
+      "path": "evaluation/smooth_tracking_schedule.json",
+      "sha256": "0d3c9c547e6883c24c4a4ec41d7c64e3fef0e2a699f586d218722b6e74a7ba30",
+      "entries": [
+        [
+          0,
+          0,
+          0.0
+        ],
+        [
+          2,
+          8,
+          0.05
+        ],
+        [
+          4,
+          15,
+          0.12
+        ],
+        [
+          6,
+          18,
+          0.2
+        ],
+        [
+          8,
+          20,
+          0.3
+        ],
+        [
+          10,
+          20,
+          0.38
+        ],
+        [
+          12,
+          18,
+          0.45
+        ],
+        [
+          14,
+          15,
+          0.5
+        ],
+        [
+          16,
+          12,
+          0.52
+        ],
+        [
+          18,
+          10,
+          0.48
+        ],
+        [
+          20,
+          8,
+          0.4
+        ],
+        [
+          22,
+          6,
+          0.3
+        ],
+        [
+          24,
+          8,
+          0.18
+        ],
+        [
+          26,
+          12,
+          0.08
+        ],
+        [
+          28,
+          16,
+          0.0
+        ],
+        [
+          30,
+          18,
+          -0.1
+        ],
+        [
+          32,
+          15,
+          -0.2
+        ],
+        [
+          34,
+          10,
+          -0.28
+        ],
+        [
+          36,
+          5,
+          -0.32
+        ],
+        [
+          38,
+          0,
+          -0.3
+        ],
+        [
+          40,
+          -5,
+          -0.22
+        ],
+        [
+          42,
+          -10,
+          -0.12
+        ],
+        [
+          44,
+          -8,
+          -0.02
+        ],
+        [
+          46,
+          -4,
+          0.08
+        ],
+        [
+          48,
+          0,
+          0.15
+        ],
+        [
+          50,
+          6,
+          0.2
+        ],
+        [
+          52,
+          12,
+          0.18
+        ],
+        [
+          54,
+          16,
+          0.1
+        ],
+        [
+          56,
+          14,
+          0.03
+        ],
+        [
+          58,
+          8,
+          0.0
+        ]
+      ],
+      "target_assignment": "piecewise constant, held until the next entry",
+      "speed_target_range_rad_s": [
+        -10,
+        20
+      ],
+      "target_yaw_range": [
+        -0.32,
+        0.52
+      ]
+    }
+  }
 }

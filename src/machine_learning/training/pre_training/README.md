@@ -7,10 +7,18 @@ This directory contains all code pertaining to the initial training phase of the
 The purpose of this log is so that all team members who wish to work on training can build off of past work in a documented manner. 
 
 The objective of this work is twofold:
-1. Surpass the reference-baseline (already achieved)
+
+1. Surpass the reference-baseline (reported in earlier experiments; reassess after calibration)
 2. Perform well on the [hard evaluation](../../evaluation/mixed_schedule_hard.json)
 
-    - As of right now, "perform well" means 0 falls and minimal direction_error, as the agent is good at staying upright and good at matching target speed
+    - "Perform well" means 0 falls, minimal direction_error, and accurate target-speed tracking.
+
+Earlier entries qualitatively described good balance and speed tracking; they did not
+establish that speed tracking was better than heading tracking. Speed error (rad/s)
+and heading error (rad) require separate tolerances before such a comparison is
+meaningful. [STR-118's calibrated results](../../experiments/STR-118/PR_DRAFT.md#results)
+show lower control speed error than reference on both recorded schedules, with zero
+control falls on the smooth schedule but 25 on the hard schedule.
 
 [Get Started](control_agent/README.md)
 

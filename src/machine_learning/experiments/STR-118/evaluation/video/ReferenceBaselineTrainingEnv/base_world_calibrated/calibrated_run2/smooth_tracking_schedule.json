@@ -1,0 +1,16 @@
+{
+    "model": "C:\\Users\\hello\\ZeroShotBalancer\\src\\machine_learning\\training\\reference_baseline\\models\\calibrated_run2\\ReferenceBaselineTrainingEnv_PPO\\best_model.zip",
+    "environment": "ReferenceBaselineTrainingEnv",
+    "schedule": "smooth_tracking_schedule.json",
+    "seed": 0,
+    "xml_file": "base_world_calibrated.xml",
+    "observation_normalization": "none",
+    "duration_s": 60.0,
+    "reset_grace_s": 1.0,
+    "falls": 2,
+    "mean_speed_error": 10.730121033036859,
+    "mean_yaw_error": 2.2357149446495472,
+    "mean_abs_pitch_deg": 1.2180972520988465,
+    "max_reward": 2.1237120627819244,
+    "total_reward": 7114.387793831177
+}
