@@ -4,6 +4,7 @@ from robot_environments.ControlAgentBaseEnv import ControlAgentBaseEnv
 
 # Env for training on moving backward and forward
 
+"""
 ON ATTEMPT 5:
 # Times (s) of each random turn. Offset from the speed changes (1, 3, 4.5, 5.5) so turns and speed changes
 # are practised separately, and spread over the 30 s episode instead of ending at 5.5 s.
@@ -74,14 +75,14 @@ DEFAULT_REWARD_WEIGHTS = dict(
 SEED = 42
 
 class ControlAgentTrainingEnv(ControlAgentBaseEnv):
-    def __init__(self, reward_weights=None, **kwargs):
+    def __init__(self, reward_weights=None, xml_file='base_world_env.xml', **kwargs):
 
         # STR-75: modularize reward weights and track reward terms separately, so Tensorboard
         # shows each component instead of only the summed scalar
         self.reward_weights = {**DEFAULT_REWARD_WEIGHTS, **(reward_weights or {})}
         self.reward_terms = {}
 
-        super().__init__('base_world_env.xml', **kwargs)
+        super().__init__(xml_file, **kwargs)
 
         self.delay_target_speed = 0.0
         self.delay_target_yaw = 0.0

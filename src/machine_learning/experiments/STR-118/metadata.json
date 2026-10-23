@@ -1,0 +1,68 @@
+{
+    "ticket": "STR-118",
+    "runs": [
+        {
+            "started": "2026-10-22T22:00:19-04:00",
+            "command": "train",
+            "environment": "ControlAgentTrainingEnv",
+            "algorithm": "PPO",
+            "timesteps": 219136,
+            "device": "cpu",
+            "starting_model": null,
+            "reward_weights": {
+                "alive": 0.6,
+                "pitch": 0.05,
+                "speed_error": 0.15,
+                "lean": 5.0,
+                "direction_error": 0.15,
+                "uneven_wheel_speed": 0.007
+            },
+            "xml_file": "base_world_calibrated.xml",
+            "observation_normalization": "Gymnasium NormalizeObservation; statistics embedded in each model ZIP"
+        },
+        {
+            "started": "2026-10-22T22:28:37-04:00",
+            "command": "evaluate video",
+            "model": "experiments/STR-118/training/models/ControlAgentTrainingEnv_PPO/best_model.zip",
+            "environment": "ControlAgentTrainingEnv",
+            "xml_file": "base_world_calibrated.xml",
+            "schedule": "mixed_schedule_hard.json",
+            "seed": 0,
+            "output": "C:\\Users\\hello\\ZeroShotBalancer\\src\\machine_learning\\experiments\\STR-118\\evaluation\\video\\ControlAgentTrainingEnv\\base_world_calibrated\\mixed_schedule_hard.mp4",
+            "results": {
+                "xml_file": "base_world_calibrated.xml",
+                "observation_normalization": "checkpoint",
+                "duration_s": 60.0,
+                "reset_grace_s": 1.0,
+                "falls": 25,
+                "mean_speed_error": 14.074314580362776,
+                "mean_yaw_error": 0.740083272151424,
+                "mean_abs_pitch_deg": 5.106583880068923,
+                "max_reward": 4.6380059175522055,
+                "total_reward": 7709.764417247336
+            }
+        },
+        {
+            "started": "2026-10-23T10:24:10-04:00",
+            "command": "evaluate video",
+            "model": "training/reference_baseline/models/calibrated_run2/ReferenceBaselineTrainingEnv_PPO/best_model.zip",
+            "environment": "ReferenceBaselineTrainingEnv",
+            "xml_file": "base_world_calibrated.xml",
+            "schedule": "mixed_schedule_hard.json",
+            "seed": 0,
+            "output": "experiments\\STR-118\\evaluation\\video\\ReferenceBaselineTrainingEnv\\base_world_calibrated\\calibrated_run2\\mixed_schedule_hard.mp4",
+            "results": {
+                "xml_file": "base_world_calibrated.xml",
+                "observation_normalization": "none",
+                "duration_s": 60.0,
+                "reset_grace_s": 1.0,
+                "falls": 9,
+                "mean_speed_error": 24.860642160815807,
+                "mean_yaw_error": 2.1707315924610624,
+                "mean_abs_pitch_deg": 2.3329070550145405,
+                "max_reward": 9.061450455170375,
+                "total_reward": 8955.147798394892
+            }
+        }
+    ]
+}

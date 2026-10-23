@@ -1,0 +1,596 @@
+{
+  "ticket": "STR-118",
+  "audit_date": "2026-10-23",
+  "method": "Read final checkpoint metadata, TensorBoard scalars, evaluation NPZ, JSON, and recorded video frames; loaded both best policies for a calibrated reset and prediction. No training or full evaluation rerun. Source hashes describe files at audit time, not launch snapshots.",
+  "policies": {
+    "reference": {
+      "last_logged_step": 219136,
+      "best_checkpoint_step": 20000,
+      "final_checkpoint_step": 219136,
+      "checkpoint_archives_valid": true,
+      "checkpoints": [
+        {
+          "path": "training/reference_baseline/models/calibrated_run2/ReferenceBaselineTrainingEnv_PPO/best_model.zip",
+          "sha256": "ef3f10655074b72910694bd3a8342f464007e5c7c5101d123c0db957b547be91",
+          "num_timesteps": 20000,
+          "_total_timesteps": 219136,
+          "n_steps": 2048,
+          "batch_size": 64,
+          "n_epochs": 10,
+          "learning_rate": 0.0003,
+          "gamma": 0.99,
+          "gae_lambda": 0.95,
+          "ent_coef": 0.0,
+          "vf_coef": 0.5,
+          "max_grad_norm": 0.5,
+          "seed": null,
+          "training_xml_file": "base_world_calibrated.xml",
+          "training_evaluation_separate_env": true,
+          "normalization_required": null
+        },
+        {
+          "path": "training/reference_baseline/models/calibrated_run2/ReferenceBaselineTrainingEnv_PPO/final_model.zip",
+          "sha256": "425d504f2639b339dbf0fb2511c33f0db84acd80d6045b29cb26d5a4f11654bd",
+          "num_timesteps": 219136,
+          "_total_timesteps": 219136,
+          "n_steps": 2048,
+          "batch_size": 64,
+          "n_epochs": 10,
+          "learning_rate": 0.0003,
+          "gamma": 0.99,
+          "gae_lambda": 0.95,
+          "ent_coef": 0.0,
+          "vf_coef": 0.5,
+          "max_grad_norm": 0.5,
+          "seed": null,
+          "training_xml_file": "base_world_calibrated.xml",
+          "training_evaluation_separate_env": true,
+          "normalization_required": null
+        },
+        {
+          "path": "training/reference_baseline/models/calibrated_run2/ReferenceBaselineTrainingEnv_PPO/ReferenceBaselineTrainingEnv_PPO_cp__120000_steps.zip",
+          "sha256": "fb59bacb547e5637df68ab8ec8f05e5788376c33a25eed9b666cce9a6d1e8469",
+          "num_timesteps": 120000,
+          "_total_timesteps": 219136,
+          "n_steps": 2048,
+          "batch_size": 64,
+          "n_epochs": 10,
+          "learning_rate": 0.0003,
+          "gamma": 0.99,
+          "gae_lambda": 0.95,
+          "ent_coef": 0.0,
+          "vf_coef": 0.5,
+          "max_grad_norm": 0.5,
+          "seed": null,
+          "training_xml_file": "base_world_calibrated.xml",
+          "training_evaluation_separate_env": true,
+          "normalization_required": null
+        },
+        {
+          "path": "training/reference_baseline/models/calibrated_run2/ReferenceBaselineTrainingEnv_PPO/ReferenceBaselineTrainingEnv_PPO_cp__160000_steps.zip",
+          "sha256": "483a06595ca48489a5212b554c40b257ff44def6dba1728036723a70be8102e4",
+          "num_timesteps": 160000,
+          "_total_timesteps": 219136,
+          "n_steps": 2048,
+          "batch_size": 64,
+          "n_epochs": 10,
+          "learning_rate": 0.0003,
+          "gamma": 0.99,
+          "gae_lambda": 0.95,
+          "ent_coef": 0.0,
+          "vf_coef": 0.5,
+          "max_grad_norm": 0.5,
+          "seed": null,
+          "training_xml_file": "base_world_calibrated.xml",
+          "training_evaluation_separate_env": true,
+          "normalization_required": null
+        },
+        {
+          "path": "training/reference_baseline/models/calibrated_run2/ReferenceBaselineTrainingEnv_PPO/ReferenceBaselineTrainingEnv_PPO_cp__200000_steps.zip",
+          "sha256": "80479753db19d48e2ff79925cb15d5378041875e3810cc4e3e063e7c285e8478",
+          "num_timesteps": 200000,
+          "_total_timesteps": 219136,
+          "n_steps": 2048,
+          "batch_size": 64,
+          "n_epochs": 10,
+          "learning_rate": 0.0003,
+          "gamma": 0.99,
+          "gae_lambda": 0.95,
+          "ent_coef": 0.0,
+          "vf_coef": 0.5,
+          "max_grad_norm": 0.5,
+          "seed": null,
+          "training_xml_file": "base_world_calibrated.xml",
+          "training_evaluation_separate_env": true,
+          "normalization_required": null
+        },
+        {
+          "path": "training/reference_baseline/models/calibrated_run2/ReferenceBaselineTrainingEnv_PPO/ReferenceBaselineTrainingEnv_PPO_cp__40000_steps.zip",
+          "sha256": "2ba36d53f96007bad11a6bf75a3d9c0785b4aee84b8c1bb267d650418ba6fa6b",
+          "num_timesteps": 40000,
+          "_total_timesteps": 219136,
+          "n_steps": 2048,
+          "batch_size": 64,
+          "n_epochs": 10,
+          "learning_rate": 0.0003,
+          "gamma": 0.99,
+          "gae_lambda": 0.95,
+          "ent_coef": 0.0,
+          "vf_coef": 0.5,
+          "max_grad_norm": 0.5,
+          "seed": null,
+          "training_xml_file": "base_world_calibrated.xml",
+          "training_evaluation_separate_env": true,
+          "normalization_required": null
+        },
+        {
+          "path": "training/reference_baseline/models/calibrated_run2/ReferenceBaselineTrainingEnv_PPO/ReferenceBaselineTrainingEnv_PPO_cp__80000_steps.zip",
+          "sha256": "80e00dda9b3b3d4c6e3495715f251deac89da315a2ecb665fdb976c05de7173b",
+          "num_timesteps": 80000,
+          "_total_timesteps": 219136,
+          "n_steps": 2048,
+          "batch_size": 64,
+          "n_epochs": 10,
+          "learning_rate": 0.0003,
+          "gamma": 0.99,
+          "gae_lambda": 0.95,
+          "ent_coef": 0.0,
+          "vf_coef": 0.5,
+          "max_grad_norm": 0.5,
+          "seed": null,
+          "training_xml_file": "base_world_calibrated.xml",
+          "training_evaluation_separate_env": true,
+          "normalization_required": null
+        }
+      ],
+      "tensorboard_logs": [
+        {
+          "path": "training/reference_baseline/logs/calibrated_run2/ReferenceBaselineTrainingEnv_PPO_1/events.out.tfevents.1792763719.SofiaHP.45500.0",
+          "sha256": "bb8636d7f933b988387816bf8e761428fe9488c108ad404296fd63309498efe4",
+          "last_step": 219136
+        }
+      ],
+      "training_evaluations": [
+        {
+          "step": 20000,
+          "mean_reward": 1644.3909912109375
+        },
+        {
+          "step": 40000,
+          "mean_reward": 797.1444702148438
+        },
+        {
+          "step": 60000,
+          "mean_reward": 184.37449645996094
+        },
+        {
+          "step": 80000,
+          "mean_reward": 580.122802734375
+        },
+        {
+          "step": 100000,
+          "mean_reward": 379.1673889160156
+        },
+        {
+          "step": 120000,
+          "mean_reward": 273.336669921875
+        },
+        {
+          "step": 140000,
+          "mean_reward": 263.40460205078125
+        },
+        {
+          "step": 160000,
+          "mean_reward": 283.6745910644531
+        },
+        {
+          "step": 180000,
+          "mean_reward": 217.68739318847656
+        },
+        {
+          "step": 200000,
+          "mean_reward": 385.0430908203125
+        }
+      ],
+      "evaluation_archive": {
+        "path": "training/reference_baseline/logs/calibrated_run2/ReferenceBaselineTrainingEnv_PPO_evaluation/evaluations.npz",
+        "sha256": "c62f4902953cbc2cc9c8e04c8cd105a70e72f0a492aec1000a46168cc0145ae8"
+      },
+      "evaluation": {
+        "model": "training/reference_baseline/models/calibrated_run2/ReferenceBaselineTrainingEnv_PPO/best_model.zip",
+        "environment": "ReferenceBaselineTrainingEnv",
+        "schedule": "mixed_schedule_hard.json",
+        "seed": 0,
+        "xml_file": "base_world_calibrated.xml",
+        "observation_normalization": "none",
+        "duration_s": 60.0,
+        "reset_grace_s": 1.0,
+        "falls": 9,
+        "mean_speed_error": 24.860642160815807,
+        "mean_yaw_error": 2.1707315924610624,
+        "mean_abs_pitch_deg": 2.3329070550145405,
+        "max_reward": 9.061450455170375,
+        "total_reward": 8955.147798394892
+      },
+      "evaluation_json_path": "experiments/STR-118/evaluation/video/ReferenceBaselineTrainingEnv/base_world_calibrated/calibrated_run2/mixed_schedule_hard.json",
+      "evaluation_json_sha256": "ec6531f41fd87bef44c2822a9dd5af56594b529fa206f437885068a9dfd588cc",
+      "video": {
+        "path": "experiments/STR-118/evaluation/video/ReferenceBaselineTrainingEnv/base_world_calibrated/calibrated_run2/mixed_schedule_hard.mp4",
+        "frames": 3000,
+        "seconds": 60.0,
+        "fps": 50.0,
+        "sha256": "651c124457562fd03d54eaebdfab1b8f2d751ffd704a5934846773642098195c"
+      },
+      "metadata_matches_result_json": true,
+      "best_checkpoint_load_and_inference": "passed; finite weights, observation and action on calibrated reset; control normalization frozen"
+    },
+    "control": {
+      "last_logged_step": 219136,
+      "best_checkpoint_step": 80000,
+      "final_checkpoint_step": 219136,
+      "checkpoint_archives_valid": true,
+      "checkpoints": [
+        {
+          "path": "experiments/STR-118/training/models/ControlAgentTrainingEnv_PPO/best_model.zip",
+          "sha256": "a503a369246bf659954e4d2b3a4ddb02fede4b0d5207d2e51d4ce178e221dc25",
+          "num_timesteps": 80000,
+          "_total_timesteps": 219136,
+          "n_steps": 2048,
+          "batch_size": 64,
+          "n_epochs": 10,
+          "learning_rate": 0.0003,
+          "gamma": 0.99,
+          "gae_lambda": 0.95,
+          "ent_coef": 0.0,
+          "vf_coef": 0.5,
+          "max_grad_norm": 0.5,
+          "seed": null,
+          "training_xml_file": "base_world_calibrated.xml",
+          "training_evaluation_separate_env": null,
+          "normalization_required": true,
+          "normalization_count": 80316.0001,
+          "normalization_epsilon": 1e-08
+        },
+        {
+          "path": "experiments/STR-118/training/models/ControlAgentTrainingEnv_PPO/ControlAgentTrainingEnv_PPO_cp__120000_steps.zip",
+          "sha256": "d4522ea171c7cb9d3aea96e64a6091feac652de5a61891748d325ceab7daeb6d",
+          "num_timesteps": 120000,
+          "_total_timesteps": 219136,
+          "n_steps": 2048,
+          "batch_size": 64,
+          "n_epochs": 10,
+          "learning_rate": 0.0003,
+          "gamma": 0.99,
+          "gae_lambda": 0.95,
+          "ent_coef": 0.0,
+          "vf_coef": 0.5,
+          "max_grad_norm": 0.5,
+          "seed": null,
+          "training_xml_file": "base_world_calibrated.xml",
+          "training_evaluation_separate_env": null,
+          "normalization_required": true,
+          "normalization_count": 120367.0001,
+          "normalization_epsilon": 1e-08
+        },
+        {
+          "path": "experiments/STR-118/training/models/ControlAgentTrainingEnv_PPO/ControlAgentTrainingEnv_PPO_cp__160000_steps.zip",
+          "sha256": "456ad15b366b5ade61921bfe77d96c0dc3d288f7da7fbfad9e37fc4b84f5d03f",
+          "num_timesteps": 160000,
+          "_total_timesteps": 219136,
+          "n_steps": 2048,
+          "batch_size": 64,
+          "n_epochs": 10,
+          "learning_rate": 0.0003,
+          "gamma": 0.99,
+          "gae_lambda": 0.95,
+          "ent_coef": 0.0,
+          "vf_coef": 0.5,
+          "max_grad_norm": 0.5,
+          "seed": null,
+          "training_xml_file": "base_world_calibrated.xml",
+          "training_evaluation_separate_env": null,
+          "normalization_required": true,
+          "normalization_count": 160419.0001,
+          "normalization_epsilon": 1e-08
+        },
+        {
+          "path": "experiments/STR-118/training/models/ControlAgentTrainingEnv_PPO/ControlAgentTrainingEnv_PPO_cp__200000_steps.zip",
+          "sha256": "8f145f91045952021eb4e9a8fc415f81fbfa01f87e86c09c7385512caf4c88af",
+          "num_timesteps": 200000,
+          "_total_timesteps": 219136,
+          "n_steps": 2048,
+          "batch_size": 64,
+          "n_epochs": 10,
+          "learning_rate": 0.0003,
+          "gamma": 0.99,
+          "gae_lambda": 0.95,
+          "ent_coef": 0.0,
+          "vf_coef": 0.5,
+          "max_grad_norm": 0.5,
+          "seed": null,
+          "training_xml_file": "base_world_calibrated.xml",
+          "training_evaluation_separate_env": null,
+          "normalization_required": true,
+          "normalization_count": 200463.0001,
+          "normalization_epsilon": 1e-08
+        },
+        {
+          "path": "experiments/STR-118/training/models/ControlAgentTrainingEnv_PPO/ControlAgentTrainingEnv_PPO_cp__40000_steps.zip",
+          "sha256": "d6bca5055822bceeea3c7722d81a46790d89de9d238e9ef4afd7ab624afa2e62",
+          "num_timesteps": 40000,
+          "_total_timesteps": 219136,
+          "n_steps": 2048,
+          "batch_size": 64,
+          "n_epochs": 10,
+          "learning_rate": 0.0003,
+          "gamma": 0.99,
+          "gae_lambda": 0.95,
+          "ent_coef": 0.0,
+          "vf_coef": 0.5,
+          "max_grad_norm": 0.5,
+          "seed": null,
+          "training_xml_file": "base_world_calibrated.xml",
+          "training_evaluation_separate_env": null,
+          "normalization_required": true,
+          "normalization_count": 40258.000100000005,
+          "normalization_epsilon": 1e-08
+        },
+        {
+          "path": "experiments/STR-118/training/models/ControlAgentTrainingEnv_PPO/ControlAgentTrainingEnv_PPO_cp__80000_steps.zip",
+          "sha256": "5b0d0fdc4a644372a0bf311e3f64d1577c9f025b151b8397d883cf6fee721f79",
+          "num_timesteps": 80000,
+          "_total_timesteps": 219136,
+          "n_steps": 2048,
+          "batch_size": 64,
+          "n_epochs": 10,
+          "learning_rate": 0.0003,
+          "gamma": 0.99,
+          "gae_lambda": 0.95,
+          "ent_coef": 0.0,
+          "vf_coef": 0.5,
+          "max_grad_norm": 0.5,
+          "seed": null,
+          "training_xml_file": "base_world_calibrated.xml",
+          "training_evaluation_separate_env": null,
+          "normalization_required": true,
+          "normalization_count": 80316.0001,
+          "normalization_epsilon": 1e-08
+        },
+        {
+          "path": "experiments/STR-118/training/models/ControlAgentTrainingEnv_PPO/final_model.zip",
+          "sha256": "11889f35da52ce2e5f363f0f8cb8d58b95528098869be8c830f92a830fa82ef7",
+          "num_timesteps": 219136,
+          "_total_timesteps": 219136,
+          "n_steps": 2048,
+          "batch_size": 64,
+          "n_epochs": 10,
+          "learning_rate": 0.0003,
+          "gamma": 0.99,
+          "gae_lambda": 0.95,
+          "ent_coef": 0.0,
+          "vf_coef": 0.5,
+          "max_grad_norm": 0.5,
+          "seed": null,
+          "training_xml_file": "base_world_calibrated.xml",
+          "training_evaluation_separate_env": null,
+          "normalization_required": true,
+          "normalization_count": 219622.0001,
+          "normalization_epsilon": 1e-08
+        }
+      ],
+      "tensorboard_logs": [
+        {
+          "path": "experiments/STR-118/training/logs/ControlAgentTrainingEnv_PPO_1/events.out.tfevents.1792720819.SofiaHP.41056.0",
+          "sha256": "395d7eeec7871428bbe1812c57f221eb730a076d9759d2dad36ab54dfca6e2b9",
+          "last_step": 219136
+        }
+      ],
+      "training_evaluations": [
+        {
+          "step": 20000,
+          "mean_reward": 343.5725402832031
+        },
+        {
+          "step": 40000,
+          "mean_reward": 793.4795532226562
+        },
+        {
+          "step": 60000,
+          "mean_reward": 1337.982177734375
+        },
+        {
+          "step": 80000,
+          "mean_reward": 1938.9798583984375
+        },
+        {
+          "step": 100000,
+          "mean_reward": 340.1640930175781
+        },
+        {
+          "step": 120000,
+          "mean_reward": 620.863525390625
+        },
+        {
+          "step": 140000,
+          "mean_reward": 769.6105346679688
+        },
+        {
+          "step": 160000,
+          "mean_reward": 727.7255249023438
+        },
+        {
+          "step": 180000,
+          "mean_reward": 640.8187255859375
+        },
+        {
+          "step": 200000,
+          "mean_reward": 727.13671875
+        }
+      ],
+      "evaluation_archive": null,
+      "evaluation": {
+        "model": "experiments/STR-118/training/models/ControlAgentTrainingEnv_PPO/best_model.zip",
+        "environment": "ControlAgentTrainingEnv",
+        "schedule": "mixed_schedule_hard.json",
+        "seed": 0,
+        "xml_file": "base_world_calibrated.xml",
+        "observation_normalization": "checkpoint",
+        "duration_s": 60.0,
+        "reset_grace_s": 1.0,
+        "falls": 25,
+        "mean_speed_error": 14.074314580362776,
+        "mean_yaw_error": 0.740083272151424,
+        "mean_abs_pitch_deg": 5.106583880068923,
+        "max_reward": 4.6380059175522055,
+        "total_reward": 7709.764417247336
+      },
+      "evaluation_json_path": "experiments/STR-118/evaluation/video/ControlAgentTrainingEnv/base_world_calibrated/mixed_schedule_hard.json",
+      "evaluation_json_sha256": "9d6fdf7d3bb3573a78ba0e4559bb1a6126758d73d141619ffab25258b4bd7ef7",
+      "video": {
+        "path": "experiments/STR-118/evaluation/video/ControlAgentTrainingEnv/base_world_calibrated/mixed_schedule_hard.mp4",
+        "frames": 3000,
+        "seconds": 60.0,
+        "fps": 50.0,
+        "sha256": "78d867ea8ff287231290350fd4f902f6b1d7da24ff3e99c52ddc63bbc52267df"
+      },
+      "metadata_matches_result_json": true,
+      "best_checkpoint_load_and_inference": "passed; finite weights, observation and action on calibrated reset; control normalization frozen"
+    }
+  },
+  "current_source_sha256": {
+    "training/reference_baseline/reference_sb_rl.py": "54d66724d137480e3fc6e9115882b1741311069b57b048bc07ab9299bf802c82",
+    "training/reference_baseline/envs/reference_baseline_training_env.py": "dacc9428289a66215c25983b516326f5bfdfa33d6e128c18d2603cec50501791",
+    "training/pre_training/control_agent/sb_rl.py": "1386d82a53d4065fe86c9731898d3bc04e54d0b4470012268faf1c1e358da15d",
+    "training/pre_training/control_agent/envs/control_agent_training_environment.py": "cb6548a97029c6bb8a08e5e617bde822e562da4f05ba9128d5b7437bf54bcfb5",
+    "training/robot_environments/base_world_calibrated.xml": "3adffa5f779a5a3eeb927fea20cc0142a3e0b8bc6e678193fe3185fd23dfd8e6",
+    "training/robot_environments/robot_calibrated.xml": "aa9d154192e358d9f9876cc826d5fa394f5c37a37cc05995b3b6d191a527de82",
+    "training/robot_environments/RobotBaseEnv.py": "dc5d36b3b9301da72409ae4b827bc0a835ceda31ffd75cfb0b44ee15256114a6",
+    "training/robot_environments/ControlAgentBaseEnv.py": "05471da11e5c594be8b91fae73f2bbd18c475d0487a3369679536679f1ad5319",
+    "training/robot_environments/base_world_env.py": "f5372e75366c81be4cceb305fd16c93a23f5d9cb9af95a482927a1b910364f9e",
+    "training/visibility/observation_normalization.py": "6e1cc9c4d058451cc6c518a347e14d75ebf87f3602047eab004cd4b49182697b",
+    "evaluation/evaluate.py": "b93cfae4e89475321be09b63e1f877f8ec14b192c967495d7c580445038c5eb9",
+    "evaluation/compare.py": "6ac5db023c02a64f4419b8987c926f2f82fe4b5e3532c2c7871d7510681311d4",
+    "evaluation/mixed_schedule_hard.json": "56d690d1410a6186e5bca39efd8a4984a13b61980ad1363191bed73b1697b0ce"
+  },
+  "original_reference_checkpoint_sha256": "9bb72b08f45be7e043d000327cf79a67bb45914826685aa7380a5afd2c620f82",
+  "evaluation_schedule": [
+    [
+      0,
+      0,
+      0
+    ],
+    [
+      2,
+      40,
+      0
+    ],
+    [
+      5,
+      40,
+      1.5708
+    ],
+    [
+      8,
+      -40,
+      1.5708
+    ],
+    [
+      11,
+      -40,
+      -1.5708
+    ],
+    [
+      14,
+      0,
+      3.14159
+    ],
+    [
+      17,
+      60,
+      3.14159
+    ],
+    [
+      20,
+      60,
+      0.7854
+    ],
+    [
+      23,
+      -60,
+      -0.7854
+    ],
+    [
+      26,
+      0,
+      0
+    ],
+    [
+      29,
+      20,
+      2.3562
+    ],
+    [
+      32,
+      20,
+      -2.3562
+    ],
+    [
+      35,
+      -20,
+      0
+    ],
+    [
+      38,
+      50,
+      1.0472
+    ],
+    [
+      41,
+      -50,
+      -1.0472
+    ],
+    [
+      44,
+      0,
+      1.5708
+    ],
+    [
+      47,
+      45,
+      -1.5708
+    ],
+    [
+      50,
+      -45,
+      3.14159
+    ],
+    [
+      53,
+      30,
+      0
+    ],
+    [
+      58,
+      0,
+      0
+    ]
+  ],
+  "limitations": [
+    "Single evaluation seed and one selected training run per policy; neither achieves zero falls.",
+    "Reference and control yaw errors and reward totals use different definitions and are not directly comparable.",
+    "PPO training seeds are unset; equal budgets do not imply identical randomness.",
+    "Hard schedule requests speeds up to +/-60 rad/s, beyond calibrated actuator command limits +/-20.6 rad/s.",
+    "Checkpoint XML identifiers do not snapshot XML contents; source/XML/schedule hashes were collected after the runs.",
+    "Best checkpoints are selected using policy-specific rewards; final checkpoints were not evaluated in the recorded hard-schedule videos.",
+    "Scheduled evaluation predicts the next action before assigning the next target; this existing protocol is retained.",
+    "ONNX/TFLite and hardware preprocessing for normalized control are not qualified by this audit."
+  ],
+  "implementation_checks": {
+    "targeted_tests_passed": 7,
+    "reference_fixture_training_steps": 32,
+    "reference_fixture_periodic_evaluations": 2,
+    "reference_fixture_video_seconds": 0.1,
+    "fixture_artifacts_are_performance_results": false
+  },
+  "metadata_sha256": "bb0d64d26992aa65c8ab2a1e99c96e0f6de059b39bd0a13395757f6110abd583"
+}

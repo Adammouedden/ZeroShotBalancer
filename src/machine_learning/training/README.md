@@ -1,8 +1,27 @@
 # This directory contains all code related to training a policy for the Zero-shot Balancer agent
 
-[Reference Baseline](reference_baseline/) is a policy trained using code from https://github.com/lachlanhurst/balance-robot-mujoco-rl?tab=MIT-1-ov-file repository that will be used for initial A\B testing against our custom made pre-trained baseline
+[Reference Baseline](reference_baseline/) is a policy trained using code from the [external reference repository](https://github.com/lachlanhurst/balance-robot-mujoco-rl). It provides an external point of comparison for our policies.
 
-[Control Agent](pre_training/control_agent/) is a policy trained using our own reward function, but still leveraging the MJCF files and training code (sb_rl.py) from the reference repository.
+[Control Agent](pre_training/control_agent/) uses our team's reward and observation changes, building on the reference repository's training code and MJCF models. Control is the baseline for comparing subsequent experiments.
+
+## STR-118 reference training scope
+
+Both policies train and evaluate using independent simulator instances of
+`base_world_calibrated.xml`. This keeps periodic evaluation from resetting or
+advancing the simulator supplying the training observations. Reference retains its
+existing observations, reward, policy architecture, and PPO settings; it does not
+receive control's observation normalization.
+
+Reference uses CPU and a 219,136-step budget. Its new models, logs, and training
+videos go under `training/reference_baseline/{models,logs,movies}/calibrated_run2/`.
+The script refuses to overwrite a populated model directory and saves a final
+checkpoint as well as evaluation-selected best and periodic checkpoints. See the
+[reference training instructions](reference_baseline/README.md#calibrated-training-str-118)
+for training, TensorBoard, and evaluation commands. Both policies completed 219,136
+steps and a 60-second calibrated hard-schedule evaluation: reference recorded 9
+falls and control recorded 25. Control remains the baseline for subsequent
+experiments. See the [STR-118 results and implementation summary](../experiments/STR-118/PR_DRAFT.md#results)
+for the final comparison and its limits.
 
 ## Experiments
 

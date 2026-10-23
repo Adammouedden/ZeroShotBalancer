@@ -41,6 +41,15 @@ Evaluation runs are named after the schedule they ran rather than numbered, so o
 hold an easy and a hard evaluation without collision. Re-running the same ticket and schedule
 refuses to overwrite the recorded result unless you pass `--force`.
 
+Individual `evaluate.py video` runs now include the environment and world name:
+`evaluation/video/<EnvId>/<world>/<schedule>.mp4`, with a matching JSON metrics file.
+This lets reference and control evaluations share a ticket without replacing each
+other. Control training movies also include `<EnvId>_<ALGO>/`. Training model paths
+already include that identifier; a second run cannot overwrite a populated model
+folder. If a ticket holds several models, pass `-b` explicitly to `compare.py`.
+New normalized control checkpoints embed their observation statistics in the model
+ZIP, so no separate normalization file is needed when sharing a checkpoint.
+
 ## What is committed
 
 Not every artifact is tracked in git, since a long run writes a lot of large files:

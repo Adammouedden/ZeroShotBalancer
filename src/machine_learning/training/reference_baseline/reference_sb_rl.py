@@ -8,6 +8,7 @@ import stable_baselines3.common
 import stable_baselines3.common.base_class
 import torch
 
+from contextlib import ExitStack
 from pathlib import Path
 from stable_baselines3.common.base_class import BaseAlgorithm
 from stable_baselines3.common.callbacks import (
@@ -29,11 +30,13 @@ logging.basicConfig(level=logging.INFO, format='%(message)s')
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
-# Create directories to hold models, logs, sim videos
-MODEL_DIR = "models"
-LOG_DIR = "logs"
-RECORDING_DIR = "movies"
-DEVICE = "cuda"
+# Resolve outputs relative to this script, regardless of the launch directory.
+REFERENCE_DIR = Path(__file__).resolve().parent
+MODEL_DIR = str(REFERENCE_DIR / "models/calibrated_run2")
+LOG_DIR = str(REFERENCE_DIR / "logs/calibrated_run2")
+RECORDING_DIR = str(REFERENCE_DIR / "movies/calibrated_run2")
+TRAINING_XML = "base_world_calibrated.xml"
+DEVICE = "cpu"
 
 def algorithm_factory(algorithm_name: str, env: gym.Env) -> BaseAlgorithm:
     """
@@ -503,73 +506,92 @@ def test_tflite_arduino(ctx: dict, environment: str):
 @click.option('-t', '--timesteps', default=int(1e10), type=int, help="max training timesteps (default: run until stopped)")
 @click.pass_context
 def train(ctx: dict, environment: str, timesteps: int):
-    """ Train a model by with a given MuJoCo environment """
+    """Train with independent calibrated training and evaluation simulators."""
 
     algorithm_name = ctx.obj['ALGORITHM_NAME']
-
-    env = gym.make(environment, render_mode='rgb_array')
-    env = Monitor(env)
-    env = gym.wrappers.RecordVideo(
-        env,
-        video_folder=RECORDING_DIR,
-        video_length=0,
-        episode_trigger = lambda x: x % 50 == 0,
-    )
-
-    logger.info(f"Starting training process")
-    logger.info(f"Algorithm: {algorithm_name}")
-    logger.info(f"Environment: {environment}")
-
+    model_dir = Path(MODEL_DIR) / f"{environment}_{algorithm_name}"
+    if model_dir.exists() and any(model_dir.iterdir()):
+        raise click.ClickException(
+            f"{model_dir} already contains a run. Archive it or choose a fresh "
+            "MODEL_DIR before starting another."
+        )
     model_file = ctx.obj['MODEL_PATH']
-    if model_file is None:
-        # no model given, so create a new one
-        # model = algorithm_class('MlpPolicy', env, verbose=1, device=DEVICE, tensorboard_log=LOG_DIR)
-        model = algorithm_factory(algorithm_name=algorithm_name, env=env)
-        logger.info(f"Model: starting with new model")
-    elif os.path.isfile(model_file):
-        # start with an existing model
-        algorithm_class = getattr(stable_baselines3, algorithm_name, None)
-        if algorithm_class is None:
-            raise RuntimeError(f"Couldn't find algorithm {algorithm_name}")
-        model = algorithm_class.load(model_file, env=env, tensorboard_log=LOG_DIR)
-        logger.info(f"Model: starting with {model_file}")
-    else:
-        raise RuntimeError(f"Model file {model_file} does not exist")
+    if model_file is not None and not os.path.isfile(model_file):
+        raise click.ClickException(f"Model file {model_file} does not exist")
+    model_dir.mkdir(parents=True, exist_ok=True)
 
-    callback_on_best = StopTrainingOnRewardThreshold(reward_threshold=6000, verbose=1)
-    stop_train_callback = StopTrainingOnNoModelImprovement(
-        max_no_improvement_evals=5,
-        min_evals=10000,
-        verbose=1
-    )
+    # Close both simulators (including the recording wrapper) on completion or error.
+    with ExitStack() as resources:
+        env = gym.make(
+            environment, render_mode='rgb_array', xml_file=TRAINING_XML
+        )
+        resources.callback(lambda: env.close())
+        logger.info(f"Training world XML: {env.unwrapped.fullpath}")
+        env = Monitor(env)
+        env = gym.wrappers.RecordVideo(
+            env,
+            video_folder=str(Path(RECORDING_DIR) / f"{environment}_{algorithm_name}"),
+            video_length=0,
+            episode_trigger=lambda x: x % 50 == 0,
+        )
 
-    eval_callback = EvalCallback(
-        env,
-        eval_freq=20000,
-        callback_on_new_best=callback_on_best,
-        callback_after_eval=stop_train_callback,
-        verbose=1,
-        best_model_save_path=os.path.join(MODEL_DIR, f"{environment}_{algorithm_name}"),
-    )
+        # A new gym.make creates independent MuJoCo state; evaluation must not
+        # reset or advance the simulator supplying PPO's training observations.
+        eval_env = resources.enter_context(Monitor(gym.make(
+            environment, xml_file=TRAINING_XML
+        )))
+        logger.info(f"Evaluation world XML: {eval_env.unwrapped.fullpath}")
+        logger.info("Evaluation uses an independent simulator")
+        logger.info(f"Starting training process: {algorithm_name}, {environment}")
+        logger.info(f"Models: {model_dir}")
+        logger.info(f"TensorBoard logs: {LOG_DIR}")
 
-    checkpoint_callback = CheckpointCallback(
-        save_freq=40000,
-        verbose=2,
-        save_path=os.path.join(MODEL_DIR, f"{environment}_{algorithm_name}"),
-        name_prefix=f"{environment}_{algorithm_name}_cp_"
-    )
+        if model_file is None:
+            model = algorithm_factory(algorithm_name=algorithm_name, env=env)
+            logger.info("Model: starting with new model")
+        else:
+            algorithm_class = getattr(stable_baselines3, algorithm_name)
+            model = algorithm_class.load(
+                model_file, env=env, device=DEVICE, tensorboard_log=LOG_DIR
+            )
+            logger.info(f"Model: starting with {model_file}")
 
-    callbacks = [checkpoint_callback, eval_callback]
-    # only envs with configurable reward weights (currently ReferenceBaselineTrainingEnv) expose reward terms
-    reward_weights = getattr(env.unwrapped, "reward_weights", None)
-    if reward_weights is not None:
-        callbacks.append(RewardTermsCallback(reward_weights))
+        # These fields travel with best, periodic and final SB3 checkpoints.
+        model.training_xml_file = TRAINING_XML
+        model.training_evaluation_separate_env = True
 
-    model.learn(
-        total_timesteps=timesteps,
-        tb_log_name=f"{environment}_{algorithm_name}",
-        callback=CallbackList(callbacks)
-    )
+        callback_on_best = StopTrainingOnRewardThreshold(reward_threshold=6000, verbose=1)
+        stop_train_callback = StopTrainingOnNoModelImprovement(
+            max_no_improvement_evals=5,
+            min_evals=10000,
+            verbose=1
+        )
+        eval_callback = EvalCallback(
+            eval_env,
+            eval_freq=20000,
+            callback_on_new_best=callback_on_best,
+            callback_after_eval=stop_train_callback,
+            verbose=1,
+            best_model_save_path=str(model_dir),
+            log_path=str(Path(LOG_DIR) / f"{environment}_{algorithm_name}_evaluation"),
+        )
+        checkpoint_callback = CheckpointCallback(
+            save_freq=40000,
+            verbose=2,
+            save_path=str(model_dir),
+            name_prefix=f"{environment}_{algorithm_name}_cp_"
+        )
+        callbacks = [checkpoint_callback, eval_callback]
+        reward_weights = getattr(env.unwrapped, "reward_weights", None)
+        if reward_weights is not None:
+            callbacks.append(RewardTermsCallback(reward_weights))
+
+        model.learn(
+            total_timesteps=timesteps,
+            tb_log_name=f"{environment}_{algorithm_name}",
+            callback=CallbackList(callbacks)
+        )
+        model.save(model_dir / 'final_model.zip')
 
 
 @click.group()
