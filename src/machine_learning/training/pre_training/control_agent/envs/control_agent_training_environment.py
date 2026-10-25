@@ -2,62 +2,6 @@ import numpy as np
 
 from robot_environments.ControlAgentBaseEnv import ControlAgentBaseEnv
 
-# Env for training on moving backward and forward
-
-"""
-ON ATTEMPT 5:
-# Times (s) of each random turn. Offset from the speed changes (1, 3, 4.5, 5.5) so turns and speed changes
-# are practised separately, and spread over the 30 s episode instead of ending at 5.5 s.
-YAW_TURN_TIMES = (2.0, 4.0, 5.0, 10.0, 15.0, 20.0, 25.0)
-
-    def step(self, a):
-        if self.data.time > 5.5:
-            self.target_wheel_speed = 3.0 * self.delay_target_speed
-        elif self.data.time > 4.5:
-            self.target_wheel_speed = 2.0 * self.delay_target_speed
-        elif self.data.time > 3.0:
-            self.target_wheel_speed = -1.0 * self.delay_target_speed
-        elif self.data.time > 1.0:
-            self.target_wheel_speed = self.delay_target_speed
-
-        # latest heading whose turn time has passed (start heading before the first turn)
-        self.target_yaw = self.start_yaw
-        for turn_time, heading in zip(YAW_TURN_TIMES, self.target_headings):
-            if self.data.time > turn_time:
-                self.target_yaw = heading
-
-        ob, reward, terminated, truncated, info = ControlAgentBaseEnv.step(self, a)
-        info["reward_terms"] = self.reward_terms
-
-        return ob, reward, terminated, truncated, info
-
-    def reset_model(self):
-        self.target_wheel_speed = 0
-
-        # between -10 and 10
-        self.delay_target_speed = self.rng.uniform(low=-10.0, high=10)
-        # now between 10 to 20 or -20 to -10
-        if self.delay_target_speed > 0:
-            self.delay_target_speed += 10
-        else:
-            self.delay_target_speed -= 10
-
-        # 2 degrees +/-
-        self.pitch_offset = self.rng.uniform(low=-0.0349066, high=0.0349066)
-        ControlAgentBaseEnv.reset_model(self)
-
-        # Headings are relative to the random direction the robot faces after reset, so "no turn" means no turn.
-        # Each turn is a fresh random angle added to the previous heading, wrapped to [-pi, pi).
-        self.start_yaw = self.get_yaw()
-        turns = self.rng.uniform(low=-np.pi, high=np.pi, size=len(YAW_TURN_TIMES))
-        self.target_headings = (self.start_yaw + np.cumsum(turns) + np.pi) % (2 * np.pi) - np.pi
-        self.target_yaw = self.start_yaw
-
-        # the observation includes heading error, so rebuild it now that target_yaw is set
-        return self._get_obs()
-
-"""
-# Why these?
 # STR-75: reward weights pulled out into a dict so each term can be tuned and logged per
 # run. RewardTermsCallback writes these to reward_weights.json beside the run's tensorboard
 # events, which is what identifies the experiment a historical training log belongs to.
