@@ -5,3 +5,7 @@ This repository contains all open-source code & documentation for the Zero-Shot 
 The repository is split into two src code directories:
 1. [Embedded Systems](src/embedded_systems/README.md)
 2. [Machine Learning](src/machine_learning/README.md)
+
+## Documentation
+
+- [Unit tests](/docs/unit_tests.md): observation and action test cases, scope, and instructions for running pytest.

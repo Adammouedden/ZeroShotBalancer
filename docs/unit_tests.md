@@ -5,22 +5,31 @@ Additionally, both actions (left/right wheel speed) must be unit-tested.
 
 The goal of these tests is to ensure no undefined behavior from our I/O sources prior to a full training run/eval.
 
+## Quickstart
+Run the tests using `uv run pytest -v tests/robot_environments/test_control_agent_base_env.py` from `src/machine_learning`.
+
 ## Observations
-There are 6 raw observations assembled in [ControlAgentBaseEnv](../../robot_environments/ControlAgentBaseEnv.py#L261):
+There are 6 raw observations assembled in [ControlAgentBaseEnv](/src/machine_learning/training/robot_environments/ControlAgentBaseEnv.py#L260):
 
 1. Normalized pitch
 1. Normalized pitch rate
-1. Left wheel speed
-1. Right wheel speed
+1. Left wheel speed _(observation)_
+1. Right wheel speed _(observation)_
 1. Difference between target and actual wheel speed
 1. Difference between target and actual yaw
+
+## Actions
+Each action has 2 continuous components in `[-1, 1]`, defined by the [action space](/src/machine_learning/training/robot_environments/ControlAgentBaseEnv.py#L82) and converted into commands in [ControlAgentBaseEnv.step()](/src/machine_learning/training/robot_environments/ControlAgentBaseEnv.py#L110).
+
+1. Left wheel velocity adjustment, `action[0]`
+1. Right wheel velocity adjustment, `action[1]`
 
 We will follow the standard Arrange, Act, Assert (AAA) lifecycle.
 
 ## Arrange
 
 ### Pitch
-The System Under Test (SUT) here is the pitch of the self-balancing agent. It is algorithmically defined as the `get_pitch()` function found [here](../../robot_environments/ControlAgentBaseEnv.py#L201).
+The System Under Test (SUT) here is the pitch of the self-balancing agent. It is algorithmically defined as the `get_pitch()` function found [here](/src/machine_learning/training/robot_environments/ControlAgentBaseEnv.py#L201).
 
 `get_pitch` takes the quaternions from `robot_body`, where the rotation order `[w, x, y, z]` is mapped to `[quat[0], quat[1], quat[2], quat[3]]`. Using these, we can create a `Rotation` object and then calculate the Euler angles. The function that does this wraps the first of these angles (`x`) between $[-180°, 180°]$, and outputs it in radians.
 
@@ -37,8 +46,8 @@ A unit axis is simply a direction vector with length 1.
 
 To further clarify the above with an example: the X-axis direction is $(1, 0, 0)$. The half-angle is $90 / 2 = 45$, so:
 
-- `w` is $\cos(45\degree) = 0.7071$
-- `x` is $1\sin(45°) = 0.7071$
+- `w` is $\cos(45\degree) \approx 0.7071$
+- `x` is $1\sin(45°) \approx 0.7071$
 - `y` and `z` are zero because the axis has no Y or Z component
 
 This produces the second test vector below, $+90°$  X-axis rotation.
@@ -77,7 +86,7 @@ The standard Y cases deliberately avoid ±90°, where the `xyz` Euler representa
 - **Boundary equivalence:** At exactly 180°, both endpoints are valid because +π and −π represent the same X rotation.
 
 ### Pitch Rate
-Pitch rate is defined as `pitch_dot` within the `ControlAgentBaseEnv`, and algorithmically defined by `get_pitch_dot_alt()`, found [here](../../robot_environments/ControlAgentBaseEnv.py#L216). An alternative `get_pitch_dot()` function exists which is not currently being used.
+Pitch rate is defined as `pitch_dot` within the `ControlAgentBaseEnv`, and algorithmically defined by `get_pitch_dot_alt()`, found [here](/src/machine_learning/training/robot_environments/ControlAgentBaseEnv.py#L216). An alternative `get_pitch_dot()` function exists which is not currently being used.
 
 First, the pitch is retrieved using `get_pitch()`, alongside the current timestamp. Using the last time stamp if available, `pitch_dot` is then calculated by subtracting the current `pitch` and the `last_pitch` then dividing by their time delta `dt`.
 
@@ -98,10 +107,10 @@ First, the pitch is retrieved using `get_pitch()`, alongside the current timesta
 | Angle wrapping diagnostic | `(np.deg2rad(179), 1.0)` | `(np.deg2rad(-179), 1.1)` | Current implementation: approximately `-62.482787`; continuous positive crossing: approximately `+0.349066` |
 | Observation scaling | Controlled raw pitch rate of `0.5` | Call `_get_obs()` with valid history and positive `dt` | `_get_obs()[1]` approximately `0.5 / PITCH_DOT_MAX`, currently `0.5` |
 
-### Left/Right Wheel Speed
-Both wheel speeds are unpacked from the `get_wheel_velocities()` function, found [here](../../robot_environments/ControlAgentBaseEnv.py#233). It reads each wheel's joint angular velocity from MuJoCo: `torso_{w}_wheel.qvel[0]` (where $w \in {l,r}$). It returns these raw values in `(left, right)` order, in radians per second, without changing their signs. 
+### Left/Right Wheel Speed Observation
+Both wheel speeds are unpacked from the `get_wheel_velocities()` function, found [here](/src/machine_learning/training/robot_environments/ControlAgentBaseEnv.py#L233). It reads each wheel's joint angular velocity from MuJoCo: `torso_{w}_wheel.qvel[0]` (where $w \in {l,r}$). It returns these raw values in `(left, right)` order, in radians per second, without changing their signs. 
 
-Both wheels spin "forward", but one is spinning in a negative direction as it's rotated 180 degrees from the other. Our [robot XML](../../robot_environments/robot-02.xml) defines left wheel axis as $(-1, 0, 0)$ and right wheel axis as $(+1, 0, 0)$. These axes point in opposite direction, so reversing the sign describes the same physical rotation. Each velocity is scaled as:
+Both wheels spin "forward", but one is spinning in a negative direction as it's rotated 180 degrees from the other. Our [robot XML](/src/machine_learning/training/robot_environments/robot-02.xml) defines left wheel axis as $(-1, 0, 0)$ and right wheel axis as $(+1, 0, 0)$. These axes point in opposite direction, so reversing the sign describes the same physical rotation. Each velocity is scaled as:
 $$v_scaled = \frac{v_raw}{170.0} \times 4$$
 Thus, a raw velocity of $170$ becomes $4$, not $1$.
 
@@ -129,7 +138,7 @@ We will also use distinct simultaneous velocities to verify that the sources are
 
 ### Target and Actual Wheel Speed Difference
 
-The delta of wheel speed is computed by subtracting the `target_wheel_speed` variable and the results of `get_wheel_speed()`, defined [here](../../robot_environments/ControlAgentBaseEnv.py#241). This function takes both wheel velocities, negates the right one, adds them both, and then divides by 2.
+The delta of wheel speed is computed by subtracting the `target_wheel_speed` variable and the results of `get_wheel_speed()`, defined [here](/src/machine_learning/training/robot_environments/ControlAgentBaseEnv.py#L241). This function takes both wheel velocities, negates the right one, adds them both, and then divides by 2.
 $$ \text{wheel\_speed} = \frac{vel_l + (-1 vel_r)}{2}$$
 $$ \frac{\text{target} - \text{wheel\_speed}}{42.5}$$
 
@@ -154,7 +163,7 @@ $$ \frac{\text{target} - \text{wheel\_speed}}{42.5}$$
 ### Target and Actual Yaw Difference
 The delta of the heading/yaw difference is defined as follows:
 $$(\text{target\_yaw} - \text{yaw} + \pi)\bmod (2\pi) - \pi$$
-This formula wraps the heading into $[-\pi, \pi)$, in radians, where `target_yaw` is a set variable and `get_yaw()` is defined [here](../../robot_environments/ControlAgentBaseEnv.py#246). Just like in `get_pitch()`, this function extracts the quaternion from `robot_body`, calculates the rotation, converts the angles to Euler angles and uses only the third angle.
+This formula wraps the heading into $[-\pi, \pi)$, in radians, where `target_yaw` is a set variable and `get_yaw()` is defined [here](/src/machine_learning/training/robot_environments/ControlAgentBaseEnv.py#L246). Just like in `get_pitch()`, this function extracts the quaternion from `robot_body`, calculates the rotation, converts the angles to Euler angles and uses only the third angle.
 
 #### Test Cases
 These focus on the yaw difference.
@@ -184,6 +193,77 @@ These focuse on the quaternion extraction.
 | −90° around Z | `[np.cos(-np.pi / 4), 0, 0, np.sin(-np.pi / 4)]` | Approximately `-π / 2` | `0` | Approximately `π / 2` |
 | +30° around X | `[np.cos(np.pi / 12), np.sin(np.pi / 12), 0, 0]` | Approximately `0` | `π / 4` | Approximately `π / 4` |
 
+### Left/Right Wheel Speed Action
+[`ControlAgentBaseEnv.step(self, a)`](/src/machine_learning/training/robot_environments/ControlAgentBaseEnv.py#L110) receives the action as a two-element array in `(left, right)` order. During testing, [`model.predict(obs)`](/src/machine_learning/training/pre_training/control_agent/sb_rl.py#L168) produces the action and the test loop passes it to [`env.step(action)`](/src/machine_learning/training/pre_training/control_agent/sb_rl.py#L175). During training, [`model.learn()`](/src/machine_learning/training/pre_training/control_agent/sb_rl.py#L575) runs this loop internally, where Stable-Baselines3 samples policy actions, clips them to the action-space bounds for the current PPO configuration, and calls the environment's `step()`. [`ControlAgentTrainingEnv.step()`](/src/machine_learning/training/pre_training/control_agent/envs/control_agent_training_environment.py#L92) updates the training targets, then [forwards the action to the base class](/src/machine_learning/training/pre_training/control_agent/envs/control_agent_training_environment.py#L103).
+
+The base class reads the current joint angular velocities and [calculates the commands](/src/machine_learning/training/robot_environments/ControlAgentBaseEnv.py#L113):
+
+```python
+command_left = current_left_velocity + action[0] * WHEEL_SPEED_DELTA_MAX
+command_right = current_right_velocity + action[1] * WHEEL_SPEED_DELTA_MAX
+```
+
+[`WHEEL_SPEED_DELTA_MAX`](/src/machine_learning/training/robot_environments/ControlAgentBaseEnv.py#L23) is currently `4.0` rad/s per unit action. An action of zero commands the wheel's current measured velocity. An action of `+1` adds `4.0` rad/s, and `-1` subtracts `4.0` rad/s. Each wheel uses its own joint sign convention; the right-wheel action is not negated when assigning its command.
+
+The commands are [written to the velocity actuators](/src/machine_learning/training/robot_environments/ControlAgentBaseEnv.py#L116):
+
+```python
+env.data.actuator("motor_l_wheel").ctrl[0]
+env.data.actuator("motor_r_wheel").ctrl[0]
+```
+
+The unit tests arrange known initial joint velocities, call `step(action)`, and assert the two `ctrl` values. 
+
+For clarity, commanded velocity (`ctrl`) and measured velocity (`qvel`) are different quantities. These tests verify the command written before [physics advances](/src/machine_learning/training/robot_environments/ControlAgentBaseEnv.py#L118). They do not require the measured velocity to reach the command immediately.
+
+#### Test Cases
+
+Each row verifies both actuator commands. Velocities and commands are in rad/s.
+
+| Test case | Initial joint velocities `(left, right)` | Action `(left, right)` | Expected actuator commands `(left, right)` |
+| --- | --- | --- | --- |
+| Stationary, zero action | `(0, 0)` | `(0, 0)` | `(0, 0)` |
+| Moving, zero action | `(10, -10)` | `(0, 0)` | `(10, -10)` |
+| Positive left adjustment only | `(10, -10)` | `(1, 0)` | `(14, -10)` |
+| Negative left adjustment only | `(10, -10)` | `(-1, 0)` | `(6, -10)` |
+| Positive right adjustment only | `(10, -10)` | `(0, 1)` | `(10, -6)` |
+| Negative right adjustment only | `(10, -10)` | `(0, -1)` | `(10, -14)` |
+| Both positive adjustments | `(10, -10)` | `(1, 1)` | `(14, -6)` |
+| Both negative adjustments | `(10, -10)` | `(-1, -1)` | `(6, -14)` |
+| Opposite adjustments, left positive | `(10, -10)` | `(1, -1)` | `(14, -14)` |
+| Opposite adjustments, right positive | `(10, -10)` | `(-1, 1)` | `(6, -6)` |
+| Fractional adjustments | `(10, -10)` | `(0.5, -0.5)` | `(12, -12)` |
+| Distinct fractional adjustments | `(10, -10)` | `(-0.25, 0.75)` | `(9, -7)` |
+| Unequal initial velocities | `(7, -13)` | `(0.25, -0.5)` | `(8, -15)` |
+| Reversed initial velocities | `(-10, 10)` | `(0.5, -0.5)` | `(-8, 8)` |
+| Start from rest with opposite commands | `(0, 0)` | `(1, -1)` | `(4, -4)` |
+| Cross zero on both wheels | `(-1, 1)` | `(0.5, -0.5)` | `(1, -1)` |
+| Reach zero on both wheels | `(4, -4)` | `(-1, 1)` | `(0, 0)` |
+
+#### Consecutive Calls
+
+Each command must use the joint's current measured velocity. With physics disabled, writing `ctrl` does not change `qvel`, so repeating an action must not accumulate adjustments from the previous command.
+
+| Test case | Joint velocities before call | Previous actuator commands | Action | Expected actuator commands |
+| --- | --- | --- | --- | --- |
+| First call | `(10, -10)` | `(0, 0)` | `(1, -1)` | `(14, -14)` |
+| Repeat with unchanged measurements | `(10, -10)` | `(14, -14)` | `(1, -1)` | `(14, -14)` |
+| Repeat after updating joint measurements | `(12, -9)` | `(14, -14)` | `(1, -1)` | `(16, -13)` |
+
+These rows will be run in sequence within one test, updating the joint velocities explicitly before the third call.
+
+#### Actuator Command Boundaries
+
+The [left](/src/machine_learning/training/robot_environments/robot-02.xml#L22) and [right](/src/machine_learning/training/robot_environments/robot-02.xml#L23) velocity actuators declare `ctrllimited="true"` and `ctrlrange="-78.54 78.54"`. The Python `step()` writes the computed commands directly, without clipping them to those limits.
+
+For these command-assignment tests, physics is disabled so the expected values refer to the requests written to ctrl. Actuator saturation and wheel response require separate simulation tests.
+
+| Test case | Initial joint velocities `(left, right)` | Action | Expected stored `ctrl` values |
+| --- | --- | --- | --- |
+| Reach positive and negative limits | `(74.54, -74.54)` | `(1, -1)` | `(78.54, -78.54)` |
+| Exceed positive and negative limits | `(78, -78)` | `(1, -1)` | `(82, -82)` |
+| Exceed limits with reversed wheel signs | `(-78, 78)` | `(-1, 1)` | `(-82, 82)` |
+
 ## Act
 
-The file [`test_control_agent_base_env.py`](../../../tests/robot_environments/test_control_agent_base_env.py) contains all the unit tests illustrated above. Run it using `uv run pytest -v tests/robot_environments/test_control_agent_base_env.py` from `src/machine_learning`.
+The file [`test_control_agent_base_env.py`](/src/machine_learning/tests/robot_environments/test_control_agent_base_env.py) contains the observation and action tests outlined above. Run the tests using `uv run pytest -v tests/robot_environments/test_control_agent_base_env.py` from `src/machine_learning`.

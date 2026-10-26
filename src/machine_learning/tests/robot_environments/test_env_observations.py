@@ -1,22 +1,9 @@
-"""
-Tests for extracting and scaling robot observations from MuJoCo state.
-Run using `uv run pytest -v tests/robot_environments/test_control_agent_base_env.py`
-"""
+"""Tests for extracting and scaling robot observations from MuJoCo state."""
 
 import numpy as np
 import pytest
 
-from robot_environments.ControlAgentBaseEnv import ControlAgentBaseEnv, PITCH_DOT_MAX
-
-
-@pytest.fixture
-def env():
-    environment = ControlAgentBaseEnv(env_filename="base_world_env.xml")
-    try:
-        environment.reset()
-        yield environment
-    finally:
-        environment.close()
+from robot_environments.ControlAgentBaseEnv import PITCH_DOT_MAX
 
 
 @pytest.mark.parametrize(
