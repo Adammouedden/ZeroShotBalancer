@@ -12,6 +12,7 @@ import torch
 from pathlib import Path
 from stable_baselines3.common.base_class import BaseAlgorithm
 from stable_baselines3.common.callbacks import (
+    BaseCallback,
     StopTrainingOnNoModelImprovement,
     StopTrainingOnRewardThreshold,
     EvalCallback,
@@ -495,11 +496,49 @@ def test_tflite_arduino(ctx: dict, environment: str):
         run_loop_count += 1
 
 
+# STR-90: names for the printed values. The order has to match _get_obs() and
+# _set_action_space() in ControlAgentBaseEnv, so keep these in sync if either changes.
+OBS_LABELS = ("pitch", "pitch_dot", "wheel_l", "wheel_r", "d_speed", "d_yaw")
+ACTION_LABELS = ("left", "right")
+
+
+def format_vector(values: np.ndarray, labels: tuple[str, ...]) -> str:
+    # fall back to positions if the env's vector is not the length the labels describe, so zip
+    # cannot silently drop values
+    if len(labels) != len(values):
+        labels = tuple(str(i) for i in range(len(values)))
+    return "  ".join(f"{label}: {value:+.3f}" for label, value in zip(labels, values))
+
+
+class DisplayObsActionsCallback(BaseCallback):
+    """
+    STR-90: log what the agent sees and does every N steps, since the stdout table only carries
+    reward and episode averages. The observations are the ones the policy received, so after the
+    NormalizeObservation wrapper, and the actions are the policy's own output before the env
+    clips them to the action space.
+    """
+    def __init__(self, interval: int):
+        super().__init__()
+        self.interval = interval
+
+    def _on_step(self) -> bool:
+        if self.n_calls % self.interval == 0:
+            obs = self.locals["new_obs"][0]
+            action = self.locals["actions"][0]
+            logger.info(
+                f"step={self.num_timesteps}"
+                f" | {format_vector(obs, OBS_LABELS)}"
+                f" -> {format_vector(action, ACTION_LABELS)}"
+            )
+        return True
+
+
 @click.command(name="train", help="Train a model with a given environment")
 @click.option('-e', '--environment', required=True, type=str, help="id of Gymnasium environment (eg; ReferenceBaselineTrainingEnv)")
 @click.option('-t', '--timesteps', default=int(1e10), type=int, help="max training timesteps (default: run until stopped)")
+@click.option('--show-io', default=0, type=int, help="log the agent's observations and actions every N steps (default: 0, off)")
 @click.pass_context
-def train(ctx: dict, environment: str, timesteps: int):
+def train(ctx: dict, environment: str, timesteps: int, show_io: int):
     """ Train a model by with a given MuJoCo environment """
 
     algorithm_name = ctx.obj['ALGORITHM_NAME']
@@ -576,6 +615,11 @@ def train(ctx: dict, environment: str, timesteps: int):
     reward_weights = getattr(env.unwrapped, "reward_weights", None)
     if reward_weights is not None:
         callbacks.append(RewardTermsCallback(reward_weights))
+
+    # STR-90: off by default - at a few hundred steps a second, logging every step buries the
+    # reward table Stable Baselines writes to the same stream
+    if show_io > 0:
+        callbacks.append(DisplayObsActionsCallback(show_io))
 
     # STR-91: record what produced this run so the folder is self-describing
     experiment.write_metadata(

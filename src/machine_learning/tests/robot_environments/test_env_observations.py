@@ -3,7 +3,23 @@
 import numpy as np
 import pytest
 
-from robot_environments.ControlAgentBaseEnv import PITCH_DOT_MAX
+from robot_environments.ControlAgentBaseEnv import (
+    ControlAgentBaseEnv,
+    PITCH_DOT_MAX,
+    PITCH_MAX,
+    WHEEL_SPEED_MAX,
+)
+from sb_rl import ACTION_LABELS, OBS_LABELS
+
+
+@pytest.fixture
+def env():
+    environment = ControlAgentBaseEnv(env_filename="base_world_env.xml")
+    try:
+        environment.reset()
+        yield environment
+    finally:
+        environment.close()
 
 
 @pytest.mark.parametrize(
@@ -296,3 +312,53 @@ def test_get_yaw_and_observation_difference(
     # Assert: verify the extracted heading and its error in the observation.
     assert yaw == pytest.approx(expected_yaw, abs=1e-8, rel=0)
     assert observation[5] == pytest.approx(expected_difference)
+
+
+def test_obs_labels_cover_the_observation_space(env):
+    # Arrange / Act / Assert: a label per observation, so none is printed unnamed and none of
+    # the values is dropped by the zip in sb_rl.format_vector.
+    assert len(OBS_LABELS) == env.observation_space.shape[0], (
+        f"OBS_LABELS has {len(OBS_LABELS)} names for "
+        f"{env.observation_space.shape[0]} observations: {OBS_LABELS}"
+    )
+
+
+def test_action_labels_cover_the_action_space(env):
+    # Arrange / Act / Assert: likewise for the actions the policy returns.
+    assert len(ACTION_LABELS) == env.action_space.shape[0], (
+        f"ACTION_LABELS has {len(ACTION_LABELS)} names for "
+        f"{env.action_space.shape[0]} actions: {ACTION_LABELS}"
+    )
+
+
+@pytest.mark.parametrize(
+    "label, expected_value",
+    [
+        pytest.param("pitch", 0.1 / PITCH_MAX, id="pitch"),
+        pytest.param("pitch_dot", 0.2 / PITCH_DOT_MAX, id="pitch_dot"),
+        pytest.param("wheel_l", 10.0 / WHEEL_SPEED_MAX * 4, id="wheel_l"),
+        pytest.param("wheel_r", 20.0 / WHEEL_SPEED_MAX * 4, id="wheel_r"),
+        pytest.param("d_speed", 25.0 / WHEEL_SPEED_MAX * 4, id="d_speed"),
+        pytest.param("d_yaw", 0.7, id="d_yaw"),
+    ],
+)
+def test_obs_labels_match_observation_order(env, monkeypatch, label, expected_value):
+    # Arrange: every observation gets a distinct value, so pairing a label with the wrong
+    # position cannot coincidentally produce the expected number.
+    monkeypatch.setattr(env, "get_pitch", lambda: 0.1)
+    monkeypatch.setattr(env, "get_pitch_dot_alt", lambda: 0.2)
+    monkeypatch.setattr(env, "get_wheel_velocities", lambda: (10.0, 20.0))
+    monkeypatch.setattr(env, "get_wheel_speed", lambda: 5.0)
+    monkeypatch.setattr(env, "get_yaw", lambda: 0.0)
+    env.target_wheel_speed = 30.0
+    env.target_yaw = 0.7
+
+    # Act: label the observation the way sb_rl prints it.
+    labelled = dict(zip(OBS_LABELS, env._get_obs()))
+
+    # Assert: a reordered _get_obs() fails here naming the label, rather than only tripping the
+    # index-based assertions above with a bare numeric mismatch.
+    assert labelled[label] == pytest.approx(expected_value), (
+        f"OBS_LABELS is out of sync with _get_obs(): {label} is labelling the wrong "
+        f"position. Labels are {OBS_LABELS}, observation is {env._get_obs()}"
+    )
