@@ -1,7 +1,4 @@
-"""
-Tests for extracting and scaling robot observations from MuJoCo state.
-Run using `uv run pytest -v tests/robot_environments/test_control_agent_base_env.py`
-"""
+"""Tests for extracting and scaling robot observations from MuJoCo state."""
 
 import numpy as np
 import pytest

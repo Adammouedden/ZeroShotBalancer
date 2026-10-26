@@ -172,6 +172,7 @@ def test(ctx: dict, environment: str, show_io: bool, show_i: bool):
     obs = env.reset()[0]
     while True:
         action, _ = model.predict(obs)
+        print(f"Action: {action}")
         if show_io and run_loop_count % 30 == 0:
             logger.info(str(list(obs) + list(action)))
         if show_i and run_loop_count % 30 == 0:
