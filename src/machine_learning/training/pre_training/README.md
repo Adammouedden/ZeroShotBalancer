@@ -16,7 +16,7 @@ The objective of this work is twofold:
 Earlier entries qualitatively described good balance and speed tracking; they did not
 establish that speed tracking was better than heading tracking. Speed error (rad/s)
 and heading error (rad) require separate tolerances before such a comparison is
-meaningful. [STR-118's calibrated results](../../experiments/STR-118/PR_DRAFT.md#results)
+meaningful. [STR-118's calibrated results](https://github.com/Adammouedden/ZeroShotBalancer/pull/9)
 show lower control speed error than reference on both recorded schedules, with zero
 control falls on the smooth schedule but 25 on the hard schedule.
 

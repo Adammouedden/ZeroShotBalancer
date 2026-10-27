@@ -67,7 +67,7 @@ See the [final artifact audit](../../experiments/STR-118/AUDIT.json) for verific
 The completed smooth evaluation uses the same model and settings with
 `-s smooth_tracking_schedule.json` and output filename `smooth_tracking_schedule.mp4`
 in that same evaluation directory. Both command lines and the reference/control
-comparison are recorded in the [STR-118 results](../../experiments/STR-118/PR_DRAFT.md#results).
+comparison are recorded in the [STR-118 results](https://github.com/Adammouedden/ZeroShotBalancer/pull/9).
 
 ## Earlier adaptation notes
 

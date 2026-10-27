@@ -21,7 +21,7 @@ for training, TensorBoard, and evaluation commands. Both policies completed 219,
 steps and two 60-second calibrated evaluations (seed 0). On the hard schedule,
 reference recorded 9 falls and control recorded 25; on the smooth schedule,
 reference recorded 2 falls and control recorded zero. Control remains the baseline for subsequent
-experiments. See the [STR-118 results and implementation summary](../experiments/STR-118/PR_DRAFT.md#results)
+experiments. See the [STR-118 results and implementation summary](https://github.com/Adammouedden/ZeroShotBalancer/pull/9)
 for the final comparison and its limits.
 
 ## Experiments
