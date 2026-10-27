@@ -9,36 +9,30 @@ Only the files needed to train the policy were copied:
 - `reference_sb_rl.py`: the training and testing CLI
 - `envs/`: the `ReferenceBaselineTrainingEnv` and `Env03-v2` MuJoCo environments and the files they depend on
 
-## Calibrated training (STR-118)
+## Training
 
-**Completed:** 219,136 training steps, with the best checkpoint selected at step
-20,000 and a final checkpoint at step 219,136. The selected best model's 60-second
-hard-schedule evaluation (seed 0) recorded 9 falls, mean absolute wheel-speed error
-24.861 rad/s, and mean absolute pitch 2.333 degrees. The same best checkpoint's
-smooth-schedule evaluation (60 seconds, seed 0) recorded 2 falls, speed error
-10.730 rad/s, and pitch 1.218 degrees. These are simulation results; reference did
-not achieve zero falls on either schedule.
-
-The commands below document the completed run. No restart is needed; the existing
-model directory and evaluation files are protected against overwriting.
-
-Run these commands from `src/machine_learning/`. Both the training simulator and
-its independent evaluation simulator load `base_world_calibrated.xml`. Evaluation
+Both the training simulator and its independent evaluation simulator load the
+world selected by `TRAINING_XML` in `reference_sb_rl.py` (currently
+`base_world_calibrated.xml`). Evaluation
 does not reset or advance the training simulator. Reference's observations, reward,
 PPO settings, and raw-observation preprocessing are retained.
 
-Start a fresh CPU run with the same 219,136-step budget (omit `-m`):
+From `src/machine_learning/`, use the following template, replacing `<steps>` with
+the chosen training budget. Omit `-m` to initialize a new policy:
 
-```powershell
-uv run python training/reference_baseline/reference_sb_rl.py -a PPO train -e ReferenceBaselineTrainingEnv -t 219136
+```text
+uv run python training/reference_baseline/reference_sb_rl.py -a PPO train -e ReferenceBaselineTrainingEnv -t <steps>
 ```
 
-The script prints both resolved XML paths. Outputs are resolved relative to this
-directory, regardless of where the command is launched:
+Before a new run, configure `MODEL_DIR`, `LOG_DIR`, and `RECORDING_DIR` in the
+script to use fresh output locations. Their defaults are resolved relative to
+this directory, regardless of where the command is launched. The script prints
+the resolved XML paths and the model and log directories. `DEVICE` selects the
+training device; its current setting is `cpu`.
 
-- Models: `models/calibrated_run2/ReferenceBaselineTrainingEnv_PPO/`
-- TensorBoard: `logs/calibrated_run2/`
-- Training videos: `movies/calibrated_run2/ReferenceBaselineTrainingEnv_PPO/`
+Models and training videos use an `<environment>_<algorithm>/` subdirectory
+within their configured output roots. To inspect training, run
+`uv run tensorboard --logdir <LOG_DIR>` with the actual log path.
 
 A populated model directory is rejected before training begins. `best_model.zip`
 is selected by evaluation every 20,000 steps; periodic checkpoints are saved every
@@ -46,32 +40,12 @@ is selected by evaluation every 20,000 steps; periodic checkpoints are saved eve
 an early stop. These checkpoints record the training XML and independent-evaluation
 setting. Both simulators are closed when training finishes or raises an error.
 
-In a second terminal, also from `src/machine_learning/`:
-
-```powershell
-uv run tensorboard --logdir training/reference_baseline/logs/calibrated_run2 --port 6008
-```
-
-Open http://localhost:6008. After training completes, evaluate the selected best
-checkpoint using the calibrated world and the same 60-second hard schedule:
-
-```powershell
-uv run python evaluation/evaluate.py video -out STR-118 -m training/reference_baseline/models/calibrated_run2/ReferenceBaselineTrainingEnv_PPO/best_model.zip -e ReferenceBaselineTrainingEnv -x base_world_calibrated.xml -s mixed_schedule_hard.json --seed 0 -o experiments/STR-118/evaluation/video/ReferenceBaselineTrainingEnv/base_world_calibrated/calibrated_run2/mixed_schedule_hard.mp4
-```
-
-The completed video and matching JSON metrics are in the explicit `calibrated_run2`
-evaluation directory, with matching results in STR-118 metadata. Repeating an
-evaluation requires a different output path or an intentional `--force` overwrite.
-See the [final artifact audit](../../experiments/STR-118/AUDIT.json) for verification.
-
-The completed smooth evaluation uses the same model and settings with
-`-s smooth_tracking_schedule.json` and output filename `smooth_tracking_schedule.mp4`
-in that same evaluation directory. Both command lines and the reference/control
-comparison are recorded in the [STR-118 results](https://github.com/Adammouedden/ZeroShotBalancer/pull/9).
+The completed calibrated run's budget, output paths, evaluation commands, results,
+and audit are documented in the [STR-118 experiment record](../../experiments/STR-118/README.md).
 
 ## Earlier adaptation notes
 
-- Earlier training used `cuda`; STR-118 uses `DEVICE = "cpu"` in `reference_sb_rl.py`.
+- Earlier training used `cuda`; the current script defaults to `DEVICE = "cpu"`.
 - `train` has an optional `-t/--timesteps` cap. The rewards never reach the 6000 stop threshold,
   so without the cap training runs until you stop it (same as upstream).
 - The environments are imported from the local `envs` package. Upstream uses an installed
@@ -94,8 +68,8 @@ Don't train with the `tflite` extra installed.
 ## Historical replication workflow
 
 The following records the earlier two-stage workflow and its original output
-layout. Use the calibrated commands above for STR-118; the current training script
-selects the calibrated world and `calibrated_run2` output directories.
+layout. For current runs, use the Training section above and the actual output
+paths configured in `reference_sb_rl.py`.
 
 Run these commands from this directory. Models, logs and videos are written to `models/`, `logs/`
 and `movies/`, which git ignores.

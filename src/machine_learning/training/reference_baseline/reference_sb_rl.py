@@ -532,7 +532,7 @@ def train(ctx: dict, environment: str, timesteps: int):
             env,
             video_folder=str(Path(RECORDING_DIR) / f"{environment}_{algorithm_name}"),
             video_length=0,
-            episode_trigger=lambda x: x % 50 == 0,
+            episode_trigger = lambda x: x % 50 == 0,
         )
 
         # A new gym.make creates independent MuJoCo state; evaluation must not
@@ -542,14 +542,18 @@ def train(ctx: dict, environment: str, timesteps: int):
         )))
         logger.info(f"Evaluation world XML: {eval_env.unwrapped.fullpath}")
         logger.info("Evaluation uses an independent simulator")
-        logger.info(f"Starting training process: {algorithm_name}, {environment}")
+        logger.info(f"Starting training process")
+        logger.info(f"Algorithm: {algorithm_name}")
+        logger.info(f"Environment: {environment}")
         logger.info(f"Models: {model_dir}")
         logger.info(f"TensorBoard logs: {LOG_DIR}")
 
         if model_file is None:
+            # no model given, so create a new one
             model = algorithm_factory(algorithm_name=algorithm_name, env=env)
-            logger.info("Model: starting with new model")
+            logger.info(f"Model: starting with new model")
         else:
+            # start with an existing model
             algorithm_class = getattr(stable_baselines3, algorithm_name)
             model = algorithm_class.load(
                 model_file, env=env, device=DEVICE, tensorboard_log=LOG_DIR
@@ -566,6 +570,7 @@ def train(ctx: dict, environment: str, timesteps: int):
             min_evals=10000,
             verbose=1
         )
+
         eval_callback = EvalCallback(
             eval_env,
             eval_freq=20000,
@@ -575,13 +580,16 @@ def train(ctx: dict, environment: str, timesteps: int):
             best_model_save_path=str(model_dir),
             log_path=str(Path(LOG_DIR) / f"{environment}_{algorithm_name}_evaluation"),
         )
+
         checkpoint_callback = CheckpointCallback(
             save_freq=40000,
             verbose=2,
             save_path=str(model_dir),
             name_prefix=f"{environment}_{algorithm_name}_cp_"
         )
+
         callbacks = [checkpoint_callback, eval_callback]
+        # only envs with configurable reward weights (currently ReferenceBaselineTrainingEnv) expose reward terms
         reward_weights = getattr(env.unwrapped, "reward_weights", None)
         if reward_weights is not None:
             callbacks.append(RewardTermsCallback(reward_weights))
