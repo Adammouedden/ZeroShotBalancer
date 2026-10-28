@@ -15,8 +15,6 @@ from stable_baselines3.common.callbacks import (
     BaseCallback,
     StopTrainingOnNoModelImprovement,
     StopTrainingOnRewardThreshold,
-    EvalCallback,
-    CheckpointCallback,
     CallbackList
 )
 from stable_baselines3.common.monitor import Monitor
@@ -29,12 +27,17 @@ import envs
 # evaluation sides agree on where a ticket's artifacts go
 from visibility.experiment_tracking import Experiment, JiraTicket, TICKET_OPTION_HELP
 from visibility.reward_visibility import RewardTermsCallback
+from visibility.observation_normalization import (
+    NormalizedCheckpointCallback, NormalizedEvalCallback,
+    restore_normalization, store_normalization, wrap_for_policy,
+)
 
 logging.basicConfig(level=logging.INFO, format='%(message)s')
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
+TRAINING_XML = "base_world_calibrated.xml"
 
 
 def resolve_model_file(ctx: dict, environment: str, suffix: str = ".zip") -> str:
@@ -153,7 +156,7 @@ def convert(ctx: dict, environment: str):
 @click.pass_context
 def test(ctx: dict, environment: str, show_io: bool, show_i: bool):
     """ Test a model by running in MuJoCo interactively """
-    env = gym.make(environment, render_mode='human')
+    env = gym.make(environment, render_mode='human', xml_file=TRAINING_XML)
 
     algorithm_name = ctx.obj['ALGORITHM_NAME']
 
@@ -165,7 +168,8 @@ def test(ctx: dict, environment: str, show_io: bool, show_i: bool):
     logger.info(f"Model: {model_file}")
 
     algorithm_class = getattr(stable_baselines3, algorithm_name, None)
-    model = algorithm_class.load(model_file, env=env)
+    model = algorithm_class.load(model_file, device=DEVICE)
+    env = wrap_for_policy(env, model)
 
     run_loop_count = 0
     terminated_loop_count = 0
@@ -544,19 +548,32 @@ def train(ctx: dict, environment: str, timesteps: int, show_io: int):
     algorithm_name = ctx.obj['ALGORITHM_NAME']
     # STR-91: all artifacts below go to experiments/<TICKET>/, not shared logs/models/movies
     experiment = ctx.obj['EXPERIMENT']
+    model_dir = experiment.model_dir(environment, algorithm_name)
+    # A second run on the same ticket/environment must not replace its first model.
+    if model_dir.exists() and any(model_dir.iterdir()):
+        raise click.ClickException(
+            f"{model_dir} already contains a run. Archive that run before starting another."
+        )
     experiment.make_training_dirs()
 
-    env = gym.make(environment, render_mode='rgb_array')
+    env = gym.make(environment, render_mode='rgb_array', xml_file=TRAINING_XML)
+    reward_weights = getattr(env.unwrapped, "reward_weights", None)
+    logger.info(f"World XML: {env.unwrapped.fullpath}")
     env = Monitor(env)
     env = gym.wrappers.RecordVideo(
         env,
-        video_folder=str(experiment.movies),
+        video_folder=str(experiment.movies / f"{environment}_{algorithm_name}"),
         video_length=0,
         episode_trigger = lambda x: x % 50 == 0,
     )
 
     # STR-105: normalize observation variables
     env = gym.wrappers.NormalizeObservation(env=env, epsilon=1e-8)
+    # Evaluation must not reset training's live simulator or update its statistics.
+    eval_env = gym.wrappers.NormalizeObservation(Monitor(
+        gym.make(environment, xml_file=TRAINING_XML)
+    ), epsilon=1e-8)
+    eval_env.update_running_mean = False
 
     logger.info(f"Starting training process")
     logger.info(f"Algorithm: {algorithm_name}")
@@ -578,7 +595,9 @@ def train(ctx: dict, environment: str, timesteps: int, show_io: int):
         algorithm_class = getattr(stable_baselines3, algorithm_name, None)
         if algorithm_class is None:
             raise RuntimeError(f"Couldn't find algorithm {algorithm_name}")
-        model = algorithm_class.load(model_file, env=env, tensorboard_log=str(experiment.logs))
+        model = algorithm_class.load(model_file, device=DEVICE, tensorboard_log=str(experiment.logs))
+        restore_normalization(env, getattr(model, 'observation_normalization', None), training=True)
+        model.set_env(env)
         logger.info(f"Model: starting with {model_file}")
     else:
         raise RuntimeError(f"Model file {model_file} does not exist")
@@ -590,12 +609,11 @@ def train(ctx: dict, environment: str, timesteps: int, show_io: int):
         verbose=1
     )
 
-    # STR-91: best model and checkpoints land in this ticket's folder, so a later experiment
-    # cannot overwrite them - a trained model was lost that way before this layout existed
-    model_dir = experiment.model_dir(environment, algorithm_name)
-
-    eval_callback = EvalCallback(
-        env,
+    model.training_xml_file = TRAINING_XML
+    store_normalization(model, env)
+    eval_callback = NormalizedEvalCallback(
+        eval_env,
+        normalization_env=env,
         eval_freq=20000,
         callback_on_new_best=callback_on_best,
         callback_after_eval=stop_train_callback,
@@ -603,7 +621,8 @@ def train(ctx: dict, environment: str, timesteps: int, show_io: int):
         best_model_save_path=str(model_dir),
     )
 
-    checkpoint_callback = CheckpointCallback(
+    checkpoint_callback = NormalizedCheckpointCallback(
+        normalization_env=env,
         save_freq=40000,
         verbose=2,
         save_path=str(model_dir),
@@ -611,8 +630,7 @@ def train(ctx: dict, environment: str, timesteps: int, show_io: int):
     )
 
     callbacks = [checkpoint_callback, eval_callback]
-    # only envs with configurable reward weights (currently ReferenceBaselineTrainingEnv) expose reward terms
-    reward_weights = getattr(env.unwrapped, "reward_weights", None)
+    # Log the configurable reward components exposed by the training environment.
     if reward_weights is not None:
         callbacks.append(RewardTermsCallback(reward_weights))
 
@@ -630,6 +648,8 @@ def train(ctx: dict, environment: str, timesteps: int, show_io: int):
         device=DEVICE,
         starting_model=model_file,
         reward_weights=reward_weights,
+        xml_file=TRAINING_XML,
+        observation_normalization="Gymnasium NormalizeObservation; statistics embedded in each model ZIP",
     )
 
     try:
@@ -638,6 +658,8 @@ def train(ctx: dict, environment: str, timesteps: int, show_io: int):
             tb_log_name=f"{environment}_{algorithm_name}",
             callback=CallbackList(callbacks)
         )
+        store_normalization(model, env)
+        model.save(model_dir / 'final_model.zip')
     finally:
         # Closing the env makes RecordVideo flush the clip it is part way through, so the last
         # movie is actually watchable. In a finally block because these runs normally end with
@@ -645,6 +667,7 @@ def train(ctx: dict, environment: str, timesteps: int, show_io: int):
         # worth keeping to the Jira ticket.
         try:
             env.close()
+            eval_env.close()
         except Exception:
             logger.warning("Could not close the environment cleanly", exc_info=True)
 

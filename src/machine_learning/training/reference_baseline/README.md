@@ -2,16 +2,50 @@
 
 A PPO balancing policy trained with the environments and training script from
 [lachlanhurst/balance-robot-mujoco-rl](https://github.com/lachlanhurst/balance-robot-mujoco-rl) (MIT).
-We use it as the baseline for A/B testing our own policies.
+It provides an external comparison; our control policy is the baseline for subsequent experiments.
 
 Only the files needed to train the policy were copied:
 
-- `sb_rl.py`: the training and testing CLI
+- `reference_sb_rl.py`: the training and testing CLI
 - `envs/`: the `ReferenceBaselineTrainingEnv` and `Env03-v2` MuJoCo environments and the files they depend on
 
-## Changes from upstream
+## Training
 
-- Training runs on `cuda` (the `DEVICE` constant in `sb_rl.py`).
+Both the training simulator and its independent evaluation simulator load the
+world selected by `TRAINING_XML` in `reference_sb_rl.py` (currently
+`base_world_calibrated.xml`). Evaluation
+does not reset or advance the training simulator. Reference's observations, reward,
+PPO settings, and raw-observation preprocessing are retained.
+
+From `src/machine_learning/`, use the following template, replacing `<steps>` with
+the chosen training budget. Omit `-m` to initialize a new policy:
+
+```text
+uv run python training/reference_baseline/reference_sb_rl.py -a PPO train -e ReferenceBaselineTrainingEnv -t <steps>
+```
+
+Before a new run, configure `MODEL_DIR`, `LOG_DIR`, and `RECORDING_DIR` in the
+script to use fresh output locations. Their defaults are resolved relative to
+this directory, regardless of where the command is launched. The script prints
+the resolved XML paths and the model and log directories. `DEVICE` selects the
+training device; its current setting is `cpu`.
+
+Models and training videos use an `<environment>_<algorithm>/` subdirectory
+within their configured output roots. To inspect training, run
+`uv run tensorboard --logdir <LOG_DIR>` with the actual log path.
+
+A populated model directory is rejected before training begins. `best_model.zip`
+is selected by evaluation every 20,000 steps; periodic checkpoints are saved every
+40,000 steps. `final_model.zip` is saved when learning returns normally, including
+an early stop. These checkpoints record the training XML and independent-evaluation
+setting. Both simulators are closed when training finishes or raises an error.
+
+The completed calibrated run's budget, output paths, evaluation commands, results,
+and audit are documented in the [STR-118 experiment record](../../experiments/STR-118/README.md).
+
+## Earlier adaptation notes
+
+- Earlier training used `cuda`; the current script defaults to `DEVICE = "cpu"`.
 - `train` has an optional `-t/--timesteps` cap. The rewards never reach the 6000 stop threshold,
   so without the cap training runs until you stop it (same as upstream).
 - The environments are imported from the local `envs` package. Upstream uses an installed
@@ -31,7 +65,11 @@ TensorFlow is an optional extra because loading it before PyTorch's `triton` cau
 When TensorFlow is installed, TensorBoard loads it during training, which triggers that crash.
 Don't train with the `tflite` extra installed.
 
-## Replicate
+## Historical replication workflow
+
+The following records the earlier two-stage workflow and its original output
+layout. For current runs, use the Training section above and the actual output
+paths configured in `reference_sb_rl.py`.
 
 Run these commands from this directory. Models, logs and videos are written to `models/`, `logs/`
 and `movies/`, which git ignores.

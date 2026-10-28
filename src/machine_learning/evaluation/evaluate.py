@@ -32,6 +32,7 @@ sys.path.insert(0, str(TRAINING_DIR / "reference_baseline"))
 import envs
 
 from robot_environments.base_world_env import BaseWorldEnv
+from visibility.observation_normalization import wrap_for_policy
 
 # STR-91: per-ticket artifact layout, shared with the training scripts so the training and
 # evaluation sides agree on where a ticket's artifacts go
@@ -204,7 +205,7 @@ def annotate(frame: np.ndarray, lines: list[str]) -> np.ndarray:
 @ticket_option
 @click.option('-m', '--model', required=True, help="model .zip")
 @click.option('-o', '--output', default=None, type=click.Path(path_type=Path),
-              help="output .mp4 (default: experiments/<TICKET>/evaluation/video/<schedule>.mp4)")
+              help="output .mp4 (default: ticket evaluation/video/<env>/<world>/<schedule>.mp4)")
 @click.option('-d', '--duration', type=float, default=None,
               help=f"clip length in simulated seconds (default: last schedule entry + {LAST_ENTRY_HOLD:.0f} s, "
                    f"or 30 s for {BUILTIN_SCHEDULE})")
@@ -218,40 +219,39 @@ def annotate(frame: np.ndarray, lines: list[str]) -> np.ndarray:
               help="seconds targets are held at 0 after a fall reset (0 = resume the schedule immediately)")
 @click.option('-x', '--xml', 'xml_file', default="base_world_env.xml",
               help="world XML in training/robot_environments (e.g. base_world_calibrated.xml)")
-def video(model: str, output: str, duration: float | None, schedule_name: str, env_id: str, seed: int,
-          reset_grace: float, xml_file: str):
-    schedule = None if schedule_name == BUILTIN_SCHEDULE else load_schedule(schedule_name)
-    results = record_video(model, output, schedule, env_id, duration, seed, reset_grace, xml_file)
-    click.echo(f"Wrote {output}: {results['duration_s']:.0f}s, {results['falls']} fall(s), schedule={schedule_name}, "
-               f"xml={xml_file}")
 @click.option('--force', is_flag=True, default=False, help="overwrite an existing clip for this ticket and schedule")
 def video(ticket: str, model: str, output: Path | None, duration: float | None, schedule_name: str,
-          env_id: str, seed: int, reset_grace: float, force: bool):
+          env_id: str, seed: int, reset_grace: float, xml_file: str, force: bool):
     experiment = Experiment(ticket)
     experiment.warn_if_unmapped()
     schedule = None if schedule_name == BUILTIN_SCHEDULE else load_schedule(schedule_name)
 
     if output is None:
-        output = experiment.video_path(schedule_name)
-        if output.exists() and not force:
-            raise click.UsageError(
-                f"{output} already exists for this experiment. Pass --force to overwrite it, "
-                "or -o to write elsewhere."
-            )
+        output = experiment.video_path(schedule_name, env_id, xml_file)
+    if (output.exists() or output.with_suffix('.json').exists()) and not force:
+        raise click.UsageError(
+            f"{output} already has results. Pass --force to overwrite, or -o to write elsewhere."
+        )
     output.parent.mkdir(parents=True, exist_ok=True)
 
-    results = record_video(str(model), str(output), schedule, env_id, duration, seed, reset_grace)
+    results = record_video(str(model), str(output), schedule, env_id, duration, seed, reset_grace, xml_file)
+    output.with_suffix('.json').write_text(json.dumps({
+        "model": str(Path(model).resolve()), "environment": env_id,
+        "schedule": schedule_name, "seed": seed, **results,
+    }, indent=4) + '\n')
 
     experiment.write_metadata(
         command="evaluate video",
         model=str(model),
         environment=env_id,
+        xml_file=xml_file,
         schedule=schedule_name,
         seed=seed,
         output=str(output),
         results=results,
     )
-    click.echo(f"Wrote {output}: {results['duration_s']:.0f}s, {results['falls']} fall(s), schedule={schedule_name}")
+    click.echo(f"Wrote {output}: {results['duration_s']:.0f}s, {results['falls']} fall(s), "
+               f"schedule={schedule_name}, xml={xml_file}")
 
 
 def record_video(model: str, output: str, schedule: list[list[float]] | None, env_id: str,
@@ -262,53 +262,67 @@ def record_video(model: str, output: str, schedule: list[list[float]] | None, en
     """
     if duration is None:
         duration = 30.0 if schedule is None else schedule[-1][0] + LAST_ENTRY_HOLD
+    if duration < CONTROL_DT:
+        raise ValueError(f"Evaluation duration must be at least {CONTROL_DT} seconds.")
     # Which world to load
     env = gym.make(env_id, render_mode="rgb_array", xml_file=xml_file)
+    try:
+        policy = stable_baselines3.PPO.load(model, device="cpu")
+        env = wrap_for_policy(env, policy)
+    except Exception:
+        env.close()
+        raise
     robot = env.unwrapped
-    policy = stable_baselines3.PPO.load(model, device="cpu")
     np.random.seed(seed)
 
-    obs, _ = env.reset(seed=seed)
-    frame_every = round(1 / (VIDEO_FPS * CONTROL_DT))
-    total_steps = round(duration / CONTROL_DT)
-    falls = 0
-    last_reset = -reset_grace  # no grace period at the start of the clip
-    speed_errors, yaw_errors, pitches, rewards = [], [], [], []
+    try:
+        obs, _ = env.reset(seed=seed)
+        frame_every = round(1 / (VIDEO_FPS * CONTROL_DT))
+        total_steps = round(duration / CONTROL_DT)
+        falls = 0
+        last_reset = -reset_grace  # no grace period at the start of the clip
+        speed_errors, yaw_errors, pitches, rewards = [], [], [], []
 
-    Path(output).parent.mkdir(parents=True, exist_ok=True)
-    with imageio.get_writer(output, fps=VIDEO_FPS) as writer:
-        for step in range(total_steps):
-            t = step * CONTROL_DT
-            action, _ = policy.predict(obs, deterministic=True)
-            if schedule is not None:
-                # bypass the env's built-in schedule in step(), drive the targets ourselves
-                in_grace = t - last_reset < reset_grace
-                robot.target_wheel_speed, robot.target_yaw = (0, 0) if in_grace else schedule_target(schedule, t)
-                obs, reward, terminated, _, _ = BaseWorldEnv.step(robot, action)
-            else:
-                # ReferenceBaselineTrainingEnv schedule runs on episode time; ignore the 6000-step truncation
-                obs, reward, terminated, _, _ = env.step(action)
+        Path(output).parent.mkdir(parents=True, exist_ok=True)
+        with imageio.get_writer(output, fps=VIDEO_FPS) as writer:
+            for step in range(total_steps):
+                t = step * CONTROL_DT
+                action, _ = policy.predict(obs, deterministic=True)
+                if schedule is not None:
+                    # bypass the env's built-in schedule in step(), drive the targets ourselves
+                    in_grace = t - last_reset < reset_grace
+                    robot.target_wheel_speed, robot.target_yaw = (0, 0) if in_grace else schedule_target(schedule, t)
+                    obs, reward, terminated, _, _ = BaseWorldEnv.step(robot, action)
+                    # Scheduled stepping bypasses wrappers: apply the saved, frozen statistics.
+                    if isinstance(env, gym.wrappers.NormalizeObservation):
+                        obs = env.observation(obs)
+                else:
+                    # ReferenceBaselineTrainingEnv schedule runs on episode time; ignore the 6000-step truncation
+                    obs, reward, terminated, _, _ = env.step(action)
 
-            rewards.append(float(reward))
-            speed_errors.append(abs(robot.target_wheel_speed - robot.get_wheel_speed()))
-            yaw_errors.append(yaw_error(robot, env_id))
-            pitches.append(abs(np.degrees(robot.get_pitch())))
+                rewards.append(float(reward))
+                speed_errors.append(abs(robot.target_wheel_speed - robot.get_wheel_speed()))
+                yaw_errors.append(yaw_error(robot, env_id))
+                pitches.append(abs(np.degrees(robot.get_pitch())))
 
-            if step % frame_every == 0:
-                writer.append_data(annotate(env.render(), [
-                    f"t = {t:5.1f} s   falls: {falls}",
-                    f"speed  {robot.get_wheel_speed():6.1f}  target {robot.target_wheel_speed:6.1f}",
-                    yaw_status_line(robot, env_id),
-                    f"pitch  {np.degrees(robot.get_pitch()):6.1f} deg",
-                ]))
+                if step % frame_every == 0:
+                    writer.append_data(annotate(env.render(), [
+                        f"t = {t:5.1f} s   falls: {falls}",
+                        f"speed  {robot.get_wheel_speed():6.1f}  target {robot.target_wheel_speed:6.1f}",
+                        yaw_status_line(robot, env_id),
+                        f"pitch  {np.degrees(robot.get_pitch()):6.1f} deg",
+                    ]))
 
-            if terminated:
-                falls += 1
-                obs, _ = env.reset()
-                last_reset = t
+                if terminated:
+                    falls += 1
+                    obs, _ = env.reset()
+                    last_reset = t
 
-    env.close()
+    finally:
+        env.close()
     return {
+        "xml_file": xml_file,
+        "observation_normalization": "checkpoint" if getattr(policy, "observation_normalization", None) else "none",
         "duration_s": duration,
         "reset_grace_s": reset_grace,
         "falls": falls,
