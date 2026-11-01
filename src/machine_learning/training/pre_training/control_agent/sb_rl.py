@@ -27,7 +27,7 @@ import envs
 # evaluation sides agree on where a ticket's artifacts go
 from visibility.experiment_tracking import Experiment, JiraTicket, TICKET_OPTION_HELP
 from visibility.reward_visibility import RewardTermsCallback
-from visibility.observation_normalization import (
+from utilities.observation_normalization import (
     NormalizedCheckpointCallback, NormalizedEvalCallback,
     restore_normalization, store_normalization, wrap_for_policy,
 )
