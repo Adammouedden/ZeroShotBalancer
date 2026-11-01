@@ -32,7 +32,7 @@ sys.path.insert(0, str(TRAINING_DIR / "reference_baseline"))
 import envs
 
 from robot_environments.base_world_env import BaseWorldEnv
-from visibility.observation_normalization import wrap_for_policy
+from utilities.observation_normalization import wrap_for_policy
 
 # STR-91: per-ticket artifact layout, shared with the training scripts so the training and
 # evaluation sides agree on where a ticket's artifacts go

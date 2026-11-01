@@ -11,7 +11,7 @@ from stable_baselines3.common.callbacks import CallbackList
 from stable_baselines3.common.monitor import Monitor
 
 from visibility import experiment_tracking
-from visibility.observation_normalization import (
+from utilities.observation_normalization import (
     NormalizedCheckpointCallback, NormalizedEvalCallback,
     normalization_state, store_normalization, wrap_for_policy,
 )
