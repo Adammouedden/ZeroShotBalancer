@@ -165,9 +165,15 @@ class Experiment:
         """Folder for one compare.py run, named after the schedule it ran."""
         return self.evaluation / "comparison" / schedule_stem(schedule_name)
 
-    def video_path(self, schedule_name: str) -> Path:
-        """Clip for one evaluate.py video run, named after the schedule it ran."""
-        return self.evaluation / "video" / f"{schedule_stem(schedule_name)}.mp4"
+    def video_path(self, schedule_name: str, environment: str | None = None,
+                   xml_file: str | None = None) -> Path:
+        """Separate policies/worlds sharing a ticket; retain old callers' path layout."""
+        directory = self.evaluation / "video"
+        if environment is not None:
+            directory = directory / environment
+        if xml_file is not None:
+            directory = directory / Path(xml_file).stem
+        return directory / f"{schedule_stem(schedule_name)}.mp4"
 
     def robustness_path(self, suffix: str = ".json") -> Path:
         return self.evaluation / f"robustness{suffix}"

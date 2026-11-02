@@ -1,0 +1,16 @@
+{
+    "model": "C:\\Users\\hello\\ZeroShotBalancer\\src\\machine_learning\\experiments\\STR-118\\training\\models\\ControlAgentTrainingEnv_PPO\\best_model.zip",
+    "environment": "ControlAgentTrainingEnv",
+    "schedule": "smooth_tracking_schedule.json",
+    "seed": 0,
+    "xml_file": "base_world_calibrated.xml",
+    "observation_normalization": "checkpoint",
+    "duration_s": 60.0,
+    "reset_grace_s": 1.0,
+    "falls": 0,
+    "mean_speed_error": 7.7383308020944845,
+    "mean_yaw_error": 0.14634876957351464,
+    "mean_abs_pitch_deg": 1.2068628403002513,
+    "max_reward": 0.6023667121901739,
+    "total_reward": 6357.663052398413
+}
