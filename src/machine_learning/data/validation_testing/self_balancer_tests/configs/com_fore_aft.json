@@ -1,0 +1,12 @@
+{
+  "profile": "env01_neutral_compiled",
+  "property": "center_of_mass",
+  "body": "robot_body",
+  "direction": "fore_aft",
+  "inertia_mode": "fixed_central",
+  "points": 11,
+  "max_refinement_cases": 8,
+  "refine_to_mm": 0.5,
+  "seconds_per_seed": 10,
+  "seeds": [0, 1, 2, 3, 4]
+}

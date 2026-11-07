@@ -1,0 +1,14 @@
+{
+  "property": "center_of_mass",
+  "direction": "fore_aft",
+  "model": {
+    "chassis_size_m": [0.11, 0.05, 0.20],
+    "chassis_mass_kg": 0.75,
+    "wheel_radius_m": 0.04,
+    "wheel_thickness_m": 0.026,
+    "wheel_mass_kg": 0.10,
+    "track_width_m": 0.16
+  },
+  "seconds_per_seed": 10,
+  "seeds": [0, 1, 2, 3, 4]
+}

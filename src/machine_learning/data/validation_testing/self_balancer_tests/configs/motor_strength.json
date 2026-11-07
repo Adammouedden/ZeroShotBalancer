@@ -1,0 +1,9 @@
+{
+  "property": "motor_strength",
+  "search_range": [0, 1],
+  "points": 11,
+  "max_refinement_cases": 4,
+  "refine_to": 0.025,
+  "seconds_per_seed": 10,
+  "seeds": [0, 1, 2, 3, 4]
+}

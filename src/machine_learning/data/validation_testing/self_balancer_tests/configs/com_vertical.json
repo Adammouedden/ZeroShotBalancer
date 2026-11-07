@@ -1,0 +1,9 @@
+{
+  "property": "center_of_mass",
+  "direction": "vertical",
+  "points": 11,
+  "max_refinement_cases": 8,
+  "refine_to_mm": 0.5,
+  "seconds_per_seed": 10,
+  "seeds": [0, 1, 2, 3, 4]
+}
