@@ -11,7 +11,7 @@ from stable_baselines3.common.callbacks import CallbackList
 from stable_baselines3.common.monitor import Monitor
 
 from visibility import experiment_tracking
-from visibility.observation_normalization import (
+from utilities.observation_normalization import (
     NormalizedCheckpointCallback, NormalizedEvalCallback,
     normalization_state, store_normalization, wrap_for_policy,
 )
@@ -91,7 +91,7 @@ def test_required_missing_statistics_fail_and_legacy_remains_raw():
 
 @pytest.fixture
 def evaluation(monkeypatch, tmp_path):
-    root = Path(__file__).resolve().parents[1]
+    root = Path(__file__).resolve().parents[2]
     monkeypatch.setattr(experiment_tracking, "EXPERIMENTS_DIR", tmp_path / "experiments")
     monkeypatch.syspath_prepend(str(root / "evaluation"))
     import evaluate
@@ -156,7 +156,7 @@ def test_compare_cli_accepts_both_world_options(evaluation, monkeypatch, tmp_pat
 
 @pytest.fixture
 def reference_training(monkeypatch, tmp_path):
-    root = Path(__file__).resolve().parents[1]
+    root = Path(__file__).resolve().parents[2]
     monkeypatch.syspath_prepend(str(root / "training/reference_baseline"))
     import reference_sb_rl
     for setting, folder in (("MODEL_DIR", "models"), ("LOG_DIR", "logs"),
