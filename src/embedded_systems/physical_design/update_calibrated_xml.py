@@ -92,13 +92,8 @@ for i in range(len(df)):
     Ixz -= mass_i * dx * dz
     Iyz -= mass_i * dy * dz
 
-#Check the calcualtions of of mass, center of mass and inertia (to show they are good)
-print("mass:", round(mass, 6))
-print("com:", [round(float(v), 9) for v in com])
-print("inertia:", rotation_x, rotation_y, rotation_z, Ixy, Ixz, Iyz)
 
-
-# Write the new mass, center of mass and inertia into the MuJoCo XML (xml_out)
+# Write the new mass, center of mass and inertia into the MuJoCo XML
 parser = ET.XMLParser(target=ET.TreeBuilder(insert_comments=True))
 tree = ET.parse(xml_in, parser)
 inertial = tree.getroot().find(".//body[@name='robot_body']/inertial")
