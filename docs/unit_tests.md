@@ -267,3 +267,29 @@ For these command-assignment tests, physics is disabled so the expected values r
 ## Act
 
 The files [`test_env_observations.py`](/src/machine_learning/tests/robot_environments/test_env_observations.py) and [`test_env_actions.py`](/src/machine_learning/tests/robot_environments/test_env_actions.py) contain the observation and action tests outlined above. Run the tests using `uv run --locked python tests/run_tests.py --test-all -- -v` from `src/machine_learning`.
+
+## Combined rotations, reset, and termination
+
+The observation suite also checks combined rotations rather than assuming a
+quaternion component is an Euler angle:
+
+- `[sqrt(0.5), 0, ±0.5, 0.5]` has X Euler angle ±45° despite a zero quaternion X
+  component. Both quaternion signs represent the same orientation and must agree.
+- Mixed X/Y/Z rotations exercise real MuJoCo state through pitch/yaw extraction
+  and observation scaling, including a zero X Euler angle with nonzero quaternion X.
+- Observations retain six finite float32 values; comparisons allow float32 rounding.
+- A reset with all sampled Euler angles set to zero must store the scalar-first
+  identity quaternion `[1, 0, 0, 0]` in MuJoCo.
+
+The action suite isolates termination at both signs of the 50° pitch threshold:
+49.9° and exactly 50° do not terminate; 50.1° does. Base-environment truncation
+remains false because the TimeLimit wrapper owns that behavior.
+
+These regressions expose two existing defects: the zero-quaternion-X shortcut in
+`get_pitch()` and the scalar-last quaternion written by `reset_model()`.
+
+Remaining coverage limits include actual actuator saturation/wheel response (the
+command tests disable physics), reset reproducibility/history across episodes,
+and gimbal-lock behavior. The pitch-rate boundary diagnostic currently asserts
+the raw wrapped-angle discontinuity; it documents existing behavior rather than
+requiring a continuous angular derivative.

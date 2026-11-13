@@ -107,3 +107,18 @@ def test_step_wheel_action_command_boundaries(
     # Assert: Python writes the requested values without clipping to actuator limits.
     assert action_env.data.actuator("motor_l_wheel").ctrl[0] == pytest.approx(expected_commands[0])
     assert action_env.data.actuator("motor_r_wheel").ctrl[0] == pytest.approx(expected_commands[1])
+
+
+@pytest.mark.parametrize("pitch_degrees, expected", [
+    (0, False), (49.9, False), (-49.9, False),
+    (50, False), (-50, False), (50.1, True), (-50.1, True),
+])
+def test_step_pitch_termination_boundary(action_env, monkeypatch, pitch_degrees, expected):
+    # Isolate the termination rule; extraction has separate real-quaternion tests.
+    monkeypatch.setattr(action_env, "get_pitch", lambda: np.deg2rad(pitch_degrees))
+    observation, reward, terminated, truncated, info = action_env.step(np.zeros(2))
+    assert bool(terminated) is expected
+    assert truncated is False  # TimeLimit, not the base environment, handles truncation.
+    assert observation.shape == (6,)
+    assert reward == 0.0
+    assert info == {}

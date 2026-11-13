@@ -102,7 +102,7 @@ class ControlAgentBaseEnv(MujocoEnv, utils.EzPickle):
         euler_angles = [x_rot, y_rot, z_rot]
         # Convert to quaternion
         rotation = Rotation.from_euler('xyz', euler_angles)
-        qpos[3:7] = rotation.as_quat()
+        qpos[3:7] = rotation.as_quat(scalar_first=True)
 
         qvel = self.init_qvel
 
