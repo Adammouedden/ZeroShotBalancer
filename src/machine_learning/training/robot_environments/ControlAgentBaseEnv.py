@@ -202,8 +202,6 @@ class ControlAgentBaseEnv(MujocoEnv, utils.EzPickle):
 
     def get_pitch(self) -> float:
         quat = self.data.body("robot_body").xquat
-        if quat[1] == 0:
-            return 0
 
         rotation = Rotation.from_quat([quat[0], quat[1], quat[2], quat[3]], scalar_first=True)  # Quaternion order is [w, x, y, z] (scalar first)
         angles = rotation.as_euler('xyz', degrees=False)
