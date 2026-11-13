@@ -43,7 +43,7 @@ Keep the terminal in `src/machine_learning` and use `uv run` to run commands in 
 Run the observation and action tests:
 
 ```bash
-uv run --locked pytest -v tests/robot_environments/test_control_agent_base_env.py
+uv run --locked python tests/run_tests.py --test-all -- -v
 ```
 
 View the control-agent command-line options:
@@ -66,3 +66,7 @@ Run these commands from `src/machine_learning`, replacing `<package>` with the p
 | Sync the environment with the updated lockfile | `uv sync --locked` |
 
 `uv add` updates the project configuration, lockfile, and environment. Commit changes to `pyproject.toml` and `uv.lock` together so other developers can reproduce the environment.
+
+## Continuous integration
+
+See [Continuous integration](../ci.md) for workflow configuration, maintenance, and local reproduction.

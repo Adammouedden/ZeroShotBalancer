@@ -6,7 +6,7 @@ Additionally, both actions (left/right wheel speed) must be unit-tested.
 The goal of these tests is to ensure no undefined behavior from our I/O sources prior to a full training run/eval.
 
 ## Quickstart
-Run the tests using `uv run pytest -v tests/robot_environments/test_control_agent_base_env.py` from `src/machine_learning`.
+Run the tests using `uv run --locked python tests/run_tests.py --test-all -- -v` from `src/machine_learning`.
 
 ## Observations
 There are 6 raw observations assembled in [ControlAgentBaseEnv](/src/machine_learning/training/robot_environments/ControlAgentBaseEnv.py#L260):
@@ -266,4 +266,4 @@ For these command-assignment tests, physics is disabled so the expected values r
 
 ## Act
 
-The file [`test_control_agent_base_env.py`](/src/machine_learning/tests/robot_environments/test_control_agent_base_env.py) contains the observation and action tests outlined above. Run the tests using `uv run pytest -v tests/robot_environments/test_control_agent_base_env.py` from `src/machine_learning`.
+The files [`test_env_observations.py`](/src/machine_learning/tests/robot_environments/test_env_observations.py) and [`test_env_actions.py`](/src/machine_learning/tests/robot_environments/test_env_actions.py) contain the observation and action tests outlined above. Run the tests using `uv run --locked python tests/run_tests.py --test-all -- -v` from `src/machine_learning`.

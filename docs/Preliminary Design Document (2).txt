@@ -1,0 +1,1250 @@
+﻿Preliminary Design Document
+COP4394 - Senior Design I
+Team A23 – Zero-Shot Balancer
+Adam Mouedden | Alessandra Renelli | Alex Hynds | David Orjuela 
+Grace Rudie | Nessa Junco | Sofia Flores
+October 27, 2026
+Executive Summary        3
+Problem Statement        4
+Design Plan        4-62
+      Technology Stack        5
+General Concept of Operations        5-7
+Technical Outline        7-62
+Machine Learning        7-43
+Simulation Overview         7-17
+Data Generation        17-27
+Pre-Training        27-33
+Post-Training        33-35
+Evaluation         35-39
+ML Development Life Cycle:        39-43
+ML Team Phases        39
+Phase 1: Data Generation and Benchmark Development        39-40
+Phase 2: Pre-Training        40
+Phase 3: Post-Training        41
+Phase 4: Evaluation        41
+Phase 5: Deployment        42
+Mechanical Systems        42
+Embedded Systems        42-50
+Physical Engineering         50-61
+Initial Bill of Materials (BOM)        50-51
+Custom CAD Design        51-61
+Embedded Team Phases        61-63
+Obtaining Data and Training        62-63
+Selecting the model and shaping prompts         63
+MVP        63-74
+Definition of Done        63-64
+Design Process for Physical MVP        64-65
+Expected Outcome for Physical MVP        65-66
+Design Process for Machine Learning MVP         66-67
+Expected Outcome for Machine Learning MVP         67
+Potential Machine Learning Stretch Goals         67
+Current timeline and milestones         68-71
+Project Diagrams        71-72
+Current backlog, Sprint backlog, and Epics         73-74
+References         75-77
+
+
+
+
+
+
+
+
+Executive Summary
+The Zero Shot Balancer is a 3D printed and embedded software robot that has an objective to remain upright. This goal is fulfilled with self balancing control that is simulated in a virtual environment and trained through machine learning evaluations. The problem that will be investigated in this experiment will be if a controller for a real world physical robot can accurately be trained in a simulated environment. It will uncover how well a simulated self balancing robot can be trained using machine learning and then seeing if that training is transferred to a physical robot engineered by the team. Therefore, the main goal of the team is to transfer a trained model without any additional real world testing to a real robot which is where the team created the “zero shot” balancer title for the project. The elimination for needing additional training can have numerous applications in real world computing and engineering including in hazardous environments, unpredictable environments, or when training cannot be conducted in the real world at the scale in which it can in a simulated one. 
+The team has taken the approach to use MuJoCo files with Gymnasium to build a simulated robot modeled off the physical robot. With these files the team trains a baseline policy for the simulations then changes different variables in the simulation to represent different environments the robot could encounter. Examples of these varied conditions could be changes in friction, center of mass, or motor strength. The baseline and fine tuned model will be evaluated on different metrics determined by the team. In terms of the physical robot design, custom 3D printed chassis hold together electronics needed, battery packs, and motors used for the wheels. The reinforcement learning model will be deployed onto an ESP32 microcontroller which will control the motor movements. The robot’s tilt, wheel rotations, and motor speeds will be collected by the IMU and motor encoders. It is the critical communication between the ML teams and embedded teams as the simulations will match the physical robot in terms of dimensions, mass, sensor inputs, and motor controls. The test will be once those are all combined if the robot is able to maintain balance in a real world environment without any real world training, only simulated. In the end of the experiment, the deliverables from the team will include a fully integrated robot, simulated environment mirroring the real world, evaluation results, and documentation for how it could be recreated for robotics in many different applications. The team will be documenting this process and plans to share this documentation and an open source repository to the public so that other developers can use this experiment in different applications across robotics.  
+Problem Statement
+Reinforcement learning (RL) policies frequently fail when deployed to altered or abnormal physical conditions. This project implements a framework to benchmark and improve zero-shot physical generalization using an open-source design for a two-wheeled balancing robot. The team simulates the robot in MuJoCo via Farama Foundation’s Gymnasium (formerly belonging to OpenAI) to train it to move forward as long as possible without falling over across randomized physical conditions -- including surface friction, terrain slope, payload, center of mass offsets, motor strength, and aerodynamic drag. The  approach focuses on training over a structured subset of slight dynamic variations to achieve a reliable zero-shot generalization across naturally varied physical environments. The target users are robotics researchers and control engineers seeking to benchmark zero-shot sim-to-real transfer.
+Design Plan 
+Technology Stack 
+Simulation & Physics Engine: Google DeepMind MuJoCo, Farama Foundation’s Gymnasium
+Machine Learning & Policy Training: Python, PyTorch, Stable-Baselines3 (SB3)
+Embedded Hardware & Firmware: Microcontroller (ESP32), 6-DOF IMU, DC gearmotors with optical encoders, C++ firmware
+
+
+User Stories
+The team came together for an understanding of who the experiment will be helpful for. The following are the user stories that are created to understand the different features and findings the Sim-to-Real problem is looking to solve. 
+* US-01: As a roboticist, I want to run a baseline policy in simulation so that I can establish a reference for comparing other policies. 
+* US-02: As a roboticist, I want to vary physical parameters so that I can evaluate how well a policy handles unfamiliar physical conditions. 
+* US-03: As a roboticist, I want to evaluate baseline and fine-tuned policies using the same benchmark so that I can compare their performance consistently. 
+* US-04: As a controls engineer, I want to deploy a simulation-trained policy to the physical robot so that I can evaluate transfer without additional real-world training.
+* US-5: As a controls engineer, I want to review sensor readings and control logs so that I can investigate unexpected robot behavior. 
+* US-06: As an outside developer, I want access to the code, CAD files, and setup instructions so that I can reproduce and extend the project. 
+General Concept of Operations
+________________
+
+
+The target users for the project are robotics researchers and control engineers interested in evaluating zero-shot sim-to-real transfer. By using the proposed system, users will be able to run reinforcement learning policies in simulated environments and evaluate how well they perform when physical conditions are different from the ones used during training. The simulated environment will be provided by MuJoCo through Gymnasium. This environment will allow users to test the policy under different conditions, like gravity and friction, and observe how the robot's behavior changes. For example, these environments will allow users to test the policy’s ability to maintain the robot's balance and forward movement under different physical conditions.
+For simulation evaluation, users will run automated benchmarking scripts to test baseline and fine-tuned policy checkpoints. The checkpoints will be tested using the project's standardized out-of-distribution MuJoCo environment. This will allow users to evaluate the performance of the models across different simulated physical conditions. At the time of running these benchmarks, users will be able to observe how the baseline and fine-tuned models perform when tested outside of their original training conditions.
+Another way that researchers will be able to benefit from the project is through the open-source repository. Users will be allowed to clone the repository and insert their own reinforcement learning models to replicate the training and evaluation process. This will allow them to test their own models using the same simulated environments and benchmarking process provided by the project. By having access to the repository, other researchers can reproduce the project's process and evaluate how their own models perform under the different simulated conditions.
+In addition, using the same evaluation process allows different reinforcement learning models to be tested under the same conditions. Instead of each model being evaluated using a different setup, researchers can use the project's environment and benchmarking process to observe how different models respond to the same physical changes. This is an important detail because it makes it possible to compare results from different approaches with the same baseline and create a better understanding of how the models generalize when the simulated conditions are different.
+Finally, another way for researchers and engineers to use the project would be through physical verification. In this case, the users will be able to inspect live telemetry and observe physical testing runs while the robot attempts to maintain upright balance and move forward for a maximized distance. This characteristic will give users the ability to see the effectiveness of the model in a real physical environment rather than just relying on the simulations.
+During physical verification, evaluators will be able to observe the robot while the policy is tested under the different real-world conditions included in the project. The robot will attempt to remain upright and continue moving forward while conditions like friction variations, external push disturbances, payload shifts, or motor degradation are introduced. The engineer or researcher will also be able to check the live telemetry and the physical behavior of the robot throughout these tests. Since no additional real-world retraining will be performed, this process will help evaluate whether the policy can maintain its behavior when transferred directly from simulation to the physical system.
+The performance is measured by how long and how far the robot moves forward without falling, while being exposed to randomized conditions. Fine-tuned policies are expected to outperform baseline policies on out-of-distribution environments, and comparing physical results with simulated results quantifies the sim-to-real gap. Testing will take place under controlled conditions while maintaining zero-shot evaluation, meaning that the model will rely on what it learned during simulation rather than being retrained on the physical hardware.
+________________
+Technical Outline
+Machine Learning
+Simulation purpose and architecture
+   1. Role in the project
+The robot must remain upright while following requested speed and heading commands. These objectives interact because wheel acceleration used to recover balance can temporarily move the robot away from its requested speed. The simulation represents these interactions so that the policy can learn from the consequences of its actions over time.
+
+
+The simulation also supports controlled experiments. A baseline configuration establishes the robot's behavior under fixed conditions, while changes to friction, mass distribution, actuator strength, or disturbances provide conditions for investigating generalization. Environment configurations define the physical conditions; reinforcement learning experience is generated through interaction with those environments. Each interaction produces observations, actions, rewards, and an episode-ending signal.
+
+
+The project's zero-shot objective is to transfer a simulation-trained policy without additional learning from physical deployment experience. Physical measurements and testing remain necessary to establish model parameters, align sensor and motor interfaces, and evaluate transfer. The simulation therefore supports both controller development and preparation for the physical system.
+
+
+   2. Tool selection
+MuJoCo supplies rigid-body dynamics, contact handling, and actuator simulation. Robot geometry, joints, inertia, and actuator properties are defined in MuJoCo's XML-based MJCF format [MuJoCo Docs]. Its Python interface fits the project's training workflow, while the existing reference controller and robot models provide a starting point for development and baseline comparisons.
+
+
+Gymnasium connects this physical model to the learning algorithm through an environment interface. Each control step returns an observation, reward, termination flag, truncation flag, and information dictionary. Termination identifies a task-defined ending such as a fall; truncation identifies an external limit such as maximum episode length [Gymnasium Docs].
+
+
+Stable-Baselines3 provides the reinforcement learning implementation, with Proximal Policy Optimization serving as the starting algorithm [Training Script]. The environment defines the task and physical interaction independently of the algorithm's internal training loop. Algorithm selection, reward design, and training experiments are covered in the training section of the PDD.
+
+
+
+
+   3. Environment responsibilities
+The implementation separates shared robot behavior from training-specific behavior. The base environment extracts robot state, constructs observations, applies wheel commands, advances the physics simulation, and detects excessive tilt. The training environment adds target scheduling and reward calculation. The MJCF files define the physical world and robot [Environment Files; Core Files] .
+
+
+At each control step, the policy receives the six-element observation and produces two wheel adjustments. The environment converts those adjustments into actuator requests and advances MuJoCo through the configured physics interval. The updated state supplies the next observation and fall decision [Environment Files]. This division separates changes to the physical model from changes to the learning task.
+
+
+Experiment support includes dependency management, automated tests, checkpoint saving, reward-term logging, and selected episode videos. Together, these artifacts support investigation of unexpected behavior. Reproducing a result also requires the associated model, environment settings, preprocessing, random seeds, and command schedule.
+
+
+1. Robot representation and physical assumptions
+   1. Geometry and coordinate conventions
+The active training world contains a floor, one chassis body, and two wheel bodies. A free joint permits chassis translation and rotation, while a hinge joint connects each wheel to the chassis. The model has eight velocity degrees of freedom: six for the chassis and one for each wheel. Primitive boxes and cylinders currently approximate the robot’s structure [Core Files]. However, a CAD-derived model of the physical robot is planned to improve geometric correspondence.
+
+
+The axle lies along X, and Z points upward. The environment calls rotation about X “pitch,” representing the robot’s forward and backward lean. The revised model explicitly identifies Y as the forward axis [Core Files; Environment Files]. These conventions determine how simulated orientation corresponds to the IMU mounting and firmware transformations.
+
+
+The wheel hinge axes point in opposite directions. Consequently, forward travel uses opposite-signed joint velocities on the two sides. The environment calculates its combined wheel-speed measure by subtracting the right velocity from the left and dividing by two [Environment Files]. This sign convention also applies to encoder readings and motor commands during deployment.
+
+
+   2. Original and revised models
+Two physical models are available. The original model remains active in training. The revised model incorporates updated geometry and estimated physical parameters to more closely represent the physical robot.  Table 1 compares their principal parameters. These values describe simulation configurations; some revised parameters include component estimates. For clarification, “compiled” below means the effective value calculated when MuJoCo loads the model.
+
+
+
+
+
+
+
+
+Table 1  Model parameters
+Parameter
+	Original model
+	Revised model
+	Wheel radius
+	0.034 m
+	0.035 m
+	Wheel width
+	0.026 m
+	0.036 m
+	Wheel center separation
+	0.148 m
+	0.16709 m
+	Compiled chassis mass
+	0.6327 kg
+	0.825160 kg
+	Compiled mass per wheel
+	0.094424 kg
+	0.060 kg
+	Compiled total mass
+	0.82155 kg
+	0.945160 kg
+	Actuator target-velocity range
+	±78.54 rad/s
+	±20.6 rad/s
+	Actuator torque limit per wheel
+	±0.65 N⋅m
+	±0.115 N⋅m
+	Sources: [Core Files]; compiled model inspection. 
+
+
+The original chassis is a box measuring 0.10 by 0.037 by 0.171 meters. Its compiled mass differs from the explicit inertial entry because the world enables geometry-derived inertia. This setting causes MuJoCo to infer inertial properties from geometry [MuJoCo XML Docs]. Inspection of the compiled model established the effective masses shown in Table 1 [Core Files].
+
+
+The revised chassis uses multiple collision shapes, an offset center of mass, and a full inertia tensor. Its explicit masses are retained during compilation, although the wheel mass and portions of the chassis mass remain estimates [Core Files]. Mass distribution matters because changing component height or placement changes the robot’s response to gravity and wheel acceleration, even when the total mass remains constant.
+
+
+   3. Actuation and motor behavior
+Both models use velocity actuators with a feedback gain of 4.0. A requested wheel speed produces effort according to the difference between requested and measured speed, subject to actuator limits. With the model’s unit joint transmission, the force limits correspond to wheel-joint torque limits [Core Files; MuJoCo Modeling Docs].
+
+
+Requested speed and actual speed are distinct. The wheel’s response depends on torque, inertia, contact, and elapsed time. The policy therefore learns to control a system with velocity feedback. If the physical motor driver accepts pulse-width modulation, the embedded controller needs a corresponding feedback loop or conversion that preserves the meaning of the learned velocity request.
+
+
+The models include wheel-joint damping but do not explicitly model motor electrical behavior or battery voltage [Core Files]. Planned motor characterization includes achievable speed, acceleration, braking, and response under load. These measurements will determine whether the simplified actuator model captures the behavior needed for balancing and movement control.
+   4. Contact and simulation timing
+Both worlds use downward gravity of 9.81 m/s², a physics timestep of 0.00002 seconds, and the implicit fast integrator. Each environment action advances 250 physics steps. The resulting control interval is 0.005 seconds, equivalent to 200 policy decisions per simulated second [Core Files; Environment Files]. This timing defines the simulated control rate. Execution at the same rate on the physical controller remains untested.
+
+
+Wheel-floor contact pairs specify friction and solver settings. Because those pair settings determine the contact behavior, future friction experiments must modify the effective contact parameters [Core Files; MuJoCo XML Docs]. The baseline represents rigid components interacting with a flat, frictional surface. Tire deformation, chassis flexibility, and aerodynamic drag are not explicitly modeled. Observations use simulated state directly, with an episode-level pitch offset but no additional sensor-noise model [Core Files; Environment Files].
+
+
+2. Policy observations and actions
+   1. Observation definition
+The policy receives six numerical values describing balance, wheel motion, and tracking error. Table 2 gives their order and fixed preprocessing. Wheel speed refers to angular velocity in radians per second. Converting it to chassis travel speed requires a rolling assumption and the wheel radius, and slip can invalidate that relationship.
+
+
+Table 2  Policy observation interface
+Order
+	Quantity and source
+	Fixed preprocessing
+	1
+	Pitch from body orientation, in radians
+	Divide by 0.25
+	2
+	Pitch rate from successive pitch readings, in rad/s
+	Divide by 1.0
+	3
+	Left wheel joint velocity, in rad/s
+	Multiply by 4/170
+	4
+	Right wheel joint velocity, in rad/s
+	Multiply by 4/170
+	5
+	Target minus combined wheel speed, in rad/s
+	Multiply by 4/170
+	6
+	Target minus measured heading, in radians
+	Wrap into [−π, π)
+	Source: [Environment Files] 
+
+
+Pitch and heading are derived from the simulated body’s orientation, represented as a quaternion. Pitch rate is calculated from the change in pitch divided by elapsed simulation time. If prior history is missing or the time interval is nonpositive, the rate is returned as zero and the stored history is refreshed. Heading-error wrapping represents the shortest signed difference across the angular boundary [Environment Files].
+
+
+The fixed wheel scaling is part of the policy interface. Wheel velocities with magnitude above 42.5 rad/s produce scaled observations outside the declared [−1, 1] bounds; the environment does not clip them [Environment Files].
+
+
+
+
+   2. Statistical normalization
+During training, Gymnasium’s observation-normalization wrapper rescales observations using running statistics. Because evaluation and deployment rely on this exact preprocessing state, each policy checkpoint must retain these statistics so they can be frozen during inference [Gymnasium Wrappers Docs].
+While training currently applies normalization, checkpoint persistence and inference integration remain outstanding [Training Script]. Finalizing the overall observation interface also requires defining order, signs, units, fixed scales, and physical sensor filtering.
+
+
+
+
+   3. Wheel commands
+The action space has two continuous components, ordered left then right, each bounded between −1 and 1. Each component is multiplied by four and added to that wheel’s measured joint velocity to form a requested velocity. For measured velocities of 10 and −10 rad/s, actions of 0.5 and −0.5 request 12 and −12 rad/s [Environment Files].
+
+
+The adjustment is relative to the latest measurement. Repeating an action while the measured velocity remains unchanged produces the same request. Once physics advances and the wheel velocity changes, the same action can produce a different target [Environment Files]. This behavior is relevant to both the action tests and the physical controller’s implementation.
+
+
+Zero action requests the currently measured velocity. The velocity servo can still apply effort during the following interval to maintain that request. The environment writes requested velocities to the actuators, while MuJoCo applies the configured actuator constraints during force calculation [Environment Files; MuJoCo Modeling Docs]. Equivalent command saturation and feedback behavior must be defined for hardware deployment.
+
+
+3. Episode behavior
+   1. Targets and initialization
+The built-in training schedule samples a base target-speed magnitude between 10 and 20 rad/s, assigns its sign, and selects a heading between −π and π. Speed begins at zero, changes to the sampled target after one second, reverses after three seconds, doubles after 4.5 seconds, and triples after 5.5 seconds. Heading remains fixed within the episode [Environment Files]. This schedule exposes the policy to starts, reversals, and increasing speed requests.
+
+
+Reset samples an approximately ±2-degree offset in reported pitch. This offset affects observations, reward, and termination without physically rotating the robot. The initial physical orientation separately samples a heading about Z between −π and π and small rotations about X and Y between −0.2 and 0.2 radians. The resulting orientation is stored using MuJoCo’s scalar-first quaternion convention [Environment Files].
+
+
+   2. Reward and episode endings
+The reward combines an alive term with pitch, speed-tracking, heading, lean-shaping, and wheel-motion terms. It is calculated before physics advances, while the returned observation and fall decision use the state after advancement. Falls end the episode without an additional explicit terminal penalty [Environment Files].
+
+
+An episode terminates when the magnitude of reported pitch exceeds 50 degrees. A separate time limit truncates episodes after 6,000 control steps, corresponding to 30 simulated seconds [Environment Files]. Distinguishing these endings allows evaluation to separate falling from completing the allotted interval. The fall threshold is an implemented task boundary whose behavior remains part of the planned episode-level testing.
+
+
+4. Verification work and findings
+   1. Completed interface tests
+The October 25 verification run recorded 94 passing tests: 73 observation cases and 21 action cases [Tests]. These tests check state extraction, selected scaling operations, and command calculation. Table 3 summarizes their coverage.
+
+
+Table 3  Completed interface test coverage
+Area
+	Cases checked
+	Orientation
+	Selected quaternion-to-pitch and heading conversions
+	Pitch rate
+	Consecutive readings, missing history, time intervals, and scaling
+	Wheel observations
+	Signed readings, left/right independence, and fixed scaling
+	Tracking errors
+	Target-speed difference and wrapped heading error
+	Actions
+	Ordering, signs, fractional inputs, reversals, and repeated requests
+	Command limits
+	Requests at and beyond configured actuator limits
+	Source: [Tests].
+
+
+The action tests retain MuJoCo state structures but replace physics advancement with inactive functions. This isolates the arithmetic assigning wheel requests. A command can therefore change while measured wheel velocity remains fixed, allowing repeated-action behavior to be checked independently of dynamics [Tests].
+
+
+The observation tests also document a pitch-rate limitation: direct subtraction across an angular wrap can produce an incorrect derivative [Tests; Environment Files]. Normal balancing episodes end before such extreme pitch angles, but the case identifies an assumption in the helper. 
+
+
+   2. Planned physics validation
+The next validation stage exercises commands through the complete simulation. An isolated or supported-wheel setup can establish actuator response without the competing effect of a falling chassis. Ground-contact tests can then examine travel direction, turning, slip, and the interaction between wheel acceleration and body tilt.
+
+
+These tests will compare requested speed, measured speed, and actuator effort over defined intervals. Holding a fixed velocity target and repeatedly applying a measurement-relative action are different control conditions and require separate checks. Additional model checks include compiled inertial properties, initial contacts, finite state values, and timestep sensitivity.
+
+
+Timestep comparisons need to preserve the policy interval by adjusting the number of physics substeps. Otherwise, numerical integration and controller timing change together. Episode tests will also cover reset consistency, the fall threshold, and time-limit truncation. A save-and-load check will verify that the same observation receives consistent preprocessing before and after checkpoint restoration.
+
+
+   3. Baseline evidence and reproducibility
+Historical scheduled evaluations provide preliminary evidence about tracking and falling behavior [Experiment Records]. Their interpretation depends on the checkpoint, command schedule, metric definitions, and reset rules.
+
+
+For simulation comparisons, the experiment record needs to identify the physical model, environment revision, policy checkpoint, preprocessing state, seed, and schedule. This connects each result to a reproducible configuration and helps distinguish a controller change from a change in the task or physics.
+
+
+5. Integration with the physical robot
+   1. Physical parameters and sensor interfaces
+Hardware integration requires a physical parameter record covering assembled mass, component placement, wheel dimensions, axle spacing, center of mass, inertia estimates, motor response, and surface conditions. Each value needs an identifiable source, such as measurement, CAD, or an estimate, so that model refinements can be traced to the physical design.
+
+
+The policy currently receives simulated orientation and joint velocities directly [Experiment Files]. The physical system must estimate corresponding values from the IMU and encoders. A shared interface definition therefore needs coordinate frames, encoder signs, units, filtering, heading reference, command interpretation, and control timing. Representative sensor recordings can be processed through the proposed observation pipeline and compared with simulated inputs.
+
+
+Heading requires particular coordination because the controller tracks a heading target. The sensing and estimation approach must establish that reference and address drift. Consistency in pitch-rate estimation and normalization is equally necessary for the physical policy inputs to retain the meaning used during training.
+   2. Remaining simulation work
+Immediate priorities are to complete reset and episode-behavior tests, reconcile observation bounds, preserve normalization state, and validate actuator response with physics enabled. Training and evaluation also require separate environment instances with controlled preprocessing. These tasks establish the fixed-condition simulation used for subsequent robustness experiments.
+
+
+The parameter studies described in the Data Generation section already examine individual and combined physical variations using a separate reference-policy validation profile. Extending this work to the revised robot model requires completing its integration and establishing a qualified baseline. The broader varied-physics benchmark remains under development, with parameter selection and the separation of training, validation, and test conditions addressed in the Data Generation and Performance Evaluations sections. 
+
+
+For the MVP, the simulation contribution consists of an identified robot model, a documented policy interface, verified environment behavior, and reproducible baseline measurements. These deliverables support the training team’s controller development and the embedded team’s implementation of compatible sensor and motor interfaces before zero-shot physical evaluation.
+________________
+
+
+Data Generation
+Purpose and Scope
+Data generation for Zero Shot Balancer establishes the simulated conditions used to train and evaluate the robot’s controller. A policy that balances one robot configuration may respond differently when the mass distribution, available motor torque, or contact conditions change. The data-generation work therefore examines which variations can be represented by the simulator, how those variations affect the reference controller, and which conditions are suitable for further experiments.
+The main inputs are MuJoCo XML Format (MJCF) models and configuration records describing physical parameters. These define the environments in which the policy operates. The observations, actions, rewards, and state trajectories are produced during interaction with those environments.
+The completed work includes a configurable parameter-validation tool, boundary and mutation sampling, and four evaluation studies using a frozen reference policy. These studies provide evidence for selecting conditions for the broader evaluation benchmark. Movement schedules provide a complementary test by changing the requested speed and direction while the policy operates in a selected physical environment. The golden evaluation is intended to bring consistent test conditions into a benchmark used throughout the project and in the final evaluation.
+Physical Parameters and Range Selection
+Reference Model and Parameter Meaning
+The validation tool supports the project’s two-wheel robot topology, consisting of a box chassis and two wheels. It accepts dimensions and masses for that topology and investigates changes to individual properties or selected combinations. The table below summarizes the supported properties and the extent of the completed evaluation. A supported input is not necessarily a property for which a full experimental sweep has already been completed.
+The completed studies use the original box-chassis reference model. They establish a parameter-testing method and results for that configuration. The revised robot model described in the simulation section requires its own baseline qualification before these studies can be extended to it. The reported offsets and motor-capacity thresholds therefore remain specific to the model and policy tested here.
+Table 4 Supported physical variations and evaluation status.
+Property
+	Variation represented
+	Completed study
+	Chassis CoM
+	Offsets along body axes; two-axis grids
+	Fore–aft, vertical, and joint sweeps
+	Motor strength
+	Fraction of reference torque capacity
+	Motor-capacity sweep
+	Chassis mass
+	Mass and central inertia scaled together
+	Regression coverage
+	Friction and damping
+	Wheel-floor sliding friction; wheel-hinge damping
+	Regression coverage
+	Selected dimensions
+	Chassis dimensions and wheel radius
+	One resized baseline qualified
+	The reference model must be established from the physics that MuJoCo actually compiles. The original model derives inertial properties from geometry. The tool converts the model to explicit inertial properties while preserving the original compiled mass, center of mass, and central inertia before applying mutations. These simulation values are not presented as measured properties of the manufactured robot.
+For center-of-mass experiments, the offsets apply to the chassis in its body frame, where X is left–right, Y is forward–backward, and Z is vertical. The experiments hold chassis mass, central inertia, and geometry fixed. This isolates a simulation parameter, but it does not reproduce moving a physical battery or payload, which would also change inertia. A component-based mass model remains necessary before those offsets can represent specific hardware modifications.
+Environment Generation and Boundary Sampling
+MJCF Models and Configuration Records
+MJCF is MuJoCo’s native XML-based language for describing a dynamical system. XML organizes information through named elements and attributes. In an MJCF model, bodies describe the system’s structure, joints define permitted relative motion, and geometric elements describe shapes used for visualization and contact. MuJoCo compiles the model description into the internal representation used by the simulator. 
+For this project, that description represents the chassis, two wheels, their joints, the floor, and the actuators. Relevant settings include dimensions, inertial properties, contact friction, damping, and motor limits. MuJoCo can infer body inertia from geometric elements or use explicitly specified inertial properties, depending on the model’s compiler settings. Defaults and inference make the compiled result important: a number written in the XML is not sufficient evidence that the simulator uses it as intended. The reference inspection and conversion described above address this issue before the tool generates physical variations.
+A configuration record describes how the project’s generation and evaluation tools should conduct an experiment. The input requests use JavaScript Object Notation (JSON), a text format that represents structured information through named values, objects, and arrays. JSON supplies the representation, while the project defines the meaning and permitted values of its configuration fields. The record identifies the property to vary, the sampling request, the evaluation seeds, and the computational limits. It can also provide dimensions and other settings for the supported robot topology.
+The request, the generated model, and the outcome record serve distinct roles. One request can produce many candidate environments, and each environment can then produce several rollouts because it is evaluated across seeds. A generated case record connects the chosen parameter values with the model variant and its screening status. Saved trial results add the seed-specific observations and outcomes. Maintaining these links prevents a collection of XML files from becoming detached from the conditions under which its performance is measured.
+Table 5 Selected configuration settings for the completed joint CoM request.
+Setting
+	Recorded value
+	Purpose
+	Property and axes
+	Chassis CoM; fore–aft and vertical
+	Defines the physical variation
+	Sampling
+	Grid; 11 initial points per axis
+	Requests combinations across both axes
+	Refinement budget
+	12 additional cases
+	Limits follow-up sampling
+	Requested resolution
+	0.5 mm fore–aft; 2 mm vertical
+	Sets target transition-bracket widths
+	Seeds and duration
+	Seeds 0–4; 10 seconds per seed
+	Defines repeated trials
+	Input validation checks the request before model generation. The implementation rejects unknown fields, unsupported properties, invalid directions, and inconsistent combinations of settings. It also checks that numerical ranges and durations are finite and valid and that seeds are distinct nonnegative integers. Defaults fill omitted supported settings, so saving the resolved configuration is important: the effective experiment includes both the user-supplied fields and the defaults applied by that version of the tool. These checks validate the request’s structure and supported scope; they do not establish that its generated environments will balance.
+Generating and Screening Configurations
+The parameter-validation tool separates the experiment into model inspection, bound calculation, variant generation, trial execution, and reporting. Each operation produces information used by the next stage. The execution command coordinates the experiment, while the individual operations also allow the team to inspect the model or rebuild a report without repeating every trial.
+The process begins by resolving the request and inspecting the configured baseline. Bound calculation then establishes the geometric and conditional restrictions, and variant generation assigns candidate parameter values. Each case has a record linking those values to the generated model and subsequent results. Cases excluded by mathematical screening remain recorded without a policy rollout. This preserves evidence of the search while avoiding simulation of candidates already rejected by the screening rules.
+For admitted cases, the tool produces model variants and checks that the requested changes affect the compiled physics. This is particularly important for inertia, actuator limits, and contact properties, where changing a written value does not by itself show that the intended behavior changed. Keeping the nominal configuration in the generated collection provides a reference against which the mutation process can be checked.
+The initial sampling includes endpoints, nominal values, and neighboring values around domain or exclusion boundaries. A one-axis center-of-mass sweep keeps the other coordinates nominal. A joint request evaluates combinations instead. The completed fore–aft/vertical request uses an initial 11-by-11 grid, with boundary neighbors and a budget of 12 additional refinement cases. This provides direct observations of interactions that separate one-axis sweeps cannot establish.
+Refining Changes in Outcomes
+After the initial trials, the tool identifies neighboring samples whose seed outcomes differ and evaluates intermediate values. Refinement follows observed transitions rather than assuming a single monotonic success threshold. It stops when the requested bracket width is reached or the declared case budget is exhausted. Consequently, the output is a set of sampled outcomes and transition brackets; unsampled regions remain unresolved.
+Validation Protocol and Completed Findings
+Qualifying the Reference and Classifying Outcomes
+The experiments use the existing frozen reference PPO policy. Policy weights remain fixed, allowing the tests to examine how physical changes affect the same controller. Before property trials begin, paired runs compare the original and converted models through states, observations, and policy actions. A separate neutral baseline must then balance for the full evaluation duration on every requested seed without numerical anomalies or review flags. A failed baseline stops the sweep rather than triggering a policy substitution or retraining.
+The neutral evaluation uses zero movement targets and a reproducible reset with small initial pitch disturbances. It removes the inherited artificial pitch bias, corrects reset quaternion ordering, and resets derivative history while reusing the reference observation and action conventions. Each reported property trial covers ten cumulative simulated seconds on one of seeds 0–4. A fall causes a seeded reset so the trial can finish its time budget. Full-duration balance, however, requires completing the trial without any fall.
+These changes belong to the neutral validation profile used for the parameter studies. They do not establish that the active training environment has the same reset behavior or that its outstanding integration checks are complete. Keeping the validation profile identifiable allows the team to interpret its results alongside the separate simulation and training work.
+Numerical validity and balance are evaluated separately. Nonfinite states, unexpected simulation-time changes, and simulator warnings can indicate numerical problems. Large finite measurements are recorded through separate review flags. These diagnostics inspect control-step endpoints and warning counters rather than every intermediate physics state. A numerically valid rollout can still contain falls, and a balanced rollout does not establish physical feasibility. The protocol also measures position drift, but its balance criterion is survival rather than precision position holding.
+Results of the Parameter Studies
+Table 6 Completed property trials using the frozen reference PPO.
+Study
+	Trials
+	Numerically valid
+	No-fall trials
+	Motor torque capacity
+	80
+	80
+	70
+	Fore–aft CoM
+	65
+	65
+	65
+	Vertical CoM
+	75
+	75
+	60
+	Joint CoM
+	505
+	505
+	415
+	Total
+	725
+	725
+	610
+	All 725 property trials were numerically valid, and 610 maintained balance throughout. These are repeated rollouts across seeds, not 725 distinct configurations. These results cover 7,250 simulated seconds, excluding reference qualification and the additional resized-baseline check. They establish outcomes for the sampled conditions, frozen policy, reset protocol, and ten-second duration. They do not establish a universal success rate over all possible environments.
+In the motor study, zero capacity and 0.1% of the reference capacity failed on all five seeds. The smallest tested capacity that passed all seeds was 2.575%. The observed failure/success bracket is therefore 0.1%–2.575%, with a requested refinement tolerance of 2.5 percentage points. This bracket helps identify a region for further investigation; it is not an exact minimum motor specification for the physical robot.
+All 13 permitted fore–aft offsets balanced, including points near the necessary bounds of ±15.105 mm. No balance transition was found among those samples. The vertical study did identify a transition: all five seeds failed at an offset of −69.062 mm and passed at −68.731 mm, relative to nominal height. The approximately 0.331 mm bracket describes the tested model and controller. The mathematical screening and physical-feasibility limitations still apply to the passing samples.
+The joint study demonstrated why independent passing intervals cannot simply be combined. A fore–aft offset of −14.8 mm passed when tested alone, and a vertical offset of −68.4 mm also passed alone. Applying both offsets together failed on all five seeds. This result supports including combinations in benchmark construction and keeping joint outcomes separate from one-axis findings. The finite joint grid and refinement budget leave parts of the continuous parameter space unresolved.
+Data Quality Checks and Reproducibility
+Preserving Experiments and Correcting Generation Errors
+The validation implementation saves the request, bounds, case manifest, model variants, frozen policy, source snapshots, hashes, and dependency versions. Per-seed logs and full state/action traces support the summary tables and transition reports. Independent artifact verification checks hashes, seed and duration coverage, finite traces, and consistency between saved records. These records make an outcome traceable to the model and implementation that produced it.
+Verification exposed a generation issue in the first vertical and joint studies: floating-point arithmetic produced an offset of approximately −1.39 × 10⁻¹⁷ m for an intended zero sample. The generator was corrected to snap machine-scale zero roundoff before deduplication, and a regression check requires exact nominal reproduction. Corrected studies were completed separately, preserving the earlier attempts. This demonstrated the importance of checking the nominal case against the baseline rather than relying only on the displayed parameter value.
+Interrupted trials are also preserved. Three workers in the corrected joint study timed out; retries used the original saved sources and unchanged policy and dependencies. The aggregate selected one completed attempt per case and seed while retaining the partial logs. After the repository reorganization, 15 targeted neutral-protocol trial traces reproduced historical traces exactly. Those compatibility checks supported retaining the earlier findings without claiming that the full 725-trial study had been repeated.
+Existing Command Data for Evaluation
+Smooth and Hard Schedules
+Physical configurations specify the robot and environment used in a trial. Command schedules specify the movement requested during that trial. The existing smooth and hard schedules supply repeatable changes in wheel-speed and yaw targets. These files are available inputs for evaluation and provide a starting point for the golden command dataset. The performance-evaluation section describes the metrics used to assess the resulting behavior.
+Each schedule entry records an absolute start time and two target values. The evaluator holds the targets until the next entry, so both schedules are piecewise constant. The smooth schedule uses smaller successive changes; it does not continuously interpolate between entries. The smooth file contains 30 entries at two-second intervals, while the hard file contains 20 entries with larger changes, reversals, and turning requests. Both finish with an entry at 58 seconds and a two-second hold, producing a 60-second evaluation under the default timing.
+  
+ Figure 1Existing smooth and hard command schedules. The plotted values are requested commands, not measured robot responses.
+The plotted values retain the current controller interfaces. The schedules use wheel-speed commands, and the supported environments do not interpret yaw identically: the Control Agent uses heading, while the reference uses a wheel-speed differential. The intended shared simulation and physical dataset uses target travel speed and direction, so its units and conversion to controller inputs still need to be finalized. The existing values cannot be treated directly as calibrated physical velocity limits.
+Remaining Data Generation Work
+Physical Configurations and Dataset Separation
+The next stage applies the validation process to the selected robot model and completes the environment collections needed for training and evaluation. Updated dimensions, mass properties, and motor measurements will inform the parameter ranges. The completed studies identify useful test conditions and demonstrate the importance of checking combinations, but they do not yet constitute the final training, validation, and test datasets. Other supported properties also require experimental sweeps before the team can report controller outcomes for them.
+The team plans to assign physical configurations to training and evaluation roles before using them for policy comparisons. Training conditions provide experience for learning, while validation conditions support development decisions. The benchmark records need to distinguish a new physical configuration from a repeated trial with a different seed. The intended tests also distinguish new combinations within the training ranges from values outside those ranges. Recording these assignments will make the scope of the generalization results clear.
+Golden Command Dataset
+The team plans to generate a 60-second golden command sequence containing a mix of smooth and demanding movements. It will include gradual and sharper turns, increases and decreases in velocity, and changes in yaw. This mix is intended to evaluate ordinary movement as well as the transitions that place greater demands on the controller. The existing smooth and hard schedules provide examples, but the final command magnitudes, timing, and ordering have not been fixed. The golden evaluation dataset will ensure fixed and specific features.
+The remaining generation work includes selecting that sequence, checking its JSON records and total duration, and reviewing whether its demands are physically achievable. Feasibility depends on both the target and the time available to reach it. A sharp change in a requested target does not require an instantaneous change in the robot’s motion, and failure by the reference policy alone does not prove that a maneuver is impossible. The final sequence will be retained for repeated comparisons through the end of the project, with the associated physical configurations and evaluation settings recorded.
+Because the golden evaluation is used repeatedly, the team must record whether its results influence training or checkpoint selection. A recurring development benchmark is not an untouched final test if its results guide those decisions. The remaining dataset specification therefore needs to identify which conditions serve development comparisons and which, if any, remain reserved for final testing. Any later change to the commands or physical configurations requires a new benchmark version so that comparisons remain interpretable.
+Applying the Data Quality Plan
+The team has prepared a data-quality testing plan for the generated environment collections. Applying it to the finalized datasets remains future work. The plan includes parameter summaries and histograms, coverage analysis, and checks for unintended relationships between parameters. The coefficient of variation describes relative spread but is unsuitable for offsets with means near zero. Centered discrepancy measures departure from uniform coverage after parameters are normalized to their intended bounds. Its interpretation must reflect the collection’s purpose: boundary-focused tests deliberately concentrate samples near limits rather than covering the domain uniformly.
+The plan also identifies Spearman rank correlation for monotonic relationships and variance inflation factors for multicollinearity. Deliberate physical constraints must be considered when interpreting either measure. Sobol sensitivity analysis is a further planned study of how parameter variation contributes to a selected performance output, including interactions. It requires an appropriate sampling design and corresponding rollouts. These analyses will extend the completed checks on individual environments; no dataset-wide statistical results are claimed at this stage.
+________________
+
+
+Pre-Training:
+Algorithm and Policy Selection
+Reinforcement Learning and PPO
+For this project, reinforcement learning (RL) was chosen as the method to train the policy. RL is a process in which an agent learns through trial and error which actions lead to the highest reward [IBM RL]. In this case, the policy receives a reward from the environment after each action, and its objective is to maximize the cumulative reward over time. 
+The technique used is Proximal Policy Optimization (PPO), since it provides stable training by limiting how much the policy’s behavior can change in each update, while being less computationally expensive than other approaches [PPO Paper]. It has also been used in related projects, including the open-source repository the team is using as a reference [Reference Repo].
+For the reinforcement learning algorithm, the team started by using PPO as implemented in the RL framework Stable-Baselines3 (SB3) [SB3 Paper]. This ensures a cleanly designed and thoroughly tested implementation of PPO, which has also empirically been proven to work well on the reference open-source repository [Reference Repo], although for a slightly different problem and a different reward function. 
+Observations, Actions and Hyperparameters
+The PPO policy is used as an agent, and the environment is a MuJoCo simulation of a two-wheeled robot. At every control step, the policy observes six values: the pitch angle, the pitch rate, the speed of each wheel, the speed error, and the yaw error (Table 6). The output is a command for each wheel that changes the wheel’s speed by up to ±4 rad/s. The full observation and action interface is described in the simulation section.
+Table 7: Observations received by the policy at each control step.
+#
+	Observation
+	Meaning
+	0
+	Pitch
+	Forward/backward tilt of the robot
+	1
+	Pitch rate
+	How fast the robot is tilting
+	2
+	Left wheel velocity
+	Speed of the left wheel
+	3
+	Right wheel velocity
+	Speed of the right wheel
+	4
+	Speed error
+	Target speed minus actual speed
+	5
+	Yaw error
+	Turning error
+	 
+The hyperparameters of the training algorithm were chosen before training. They control how the algorithm learns and how much experience it collects per update, and they affect how stably the policy learns. The team chose to start with the default SB3 hyperparameters [Training Script], listed in Table 7. However, these values will be tuned depending on the robot’s performance on the evaluation schedules and on how well the policy transfers to the physical robot.
+Table 8: PPO hyperparameters used for training (SB3 defaults).
+Hyperparameter
+	Value
+	Learning rate
+	3 × 10⁻⁴
+	Rollout length (n_steps)
+	2048
+	Batch size
+	64
+	Epochs per update
+	10
+	Discount factor (γ)
+	0.99
+	GAE λ
+	0.95
+	Clip range
+	0.2
+	           Total timesteps (recommended reference)
+	3,000,000
+	           Total timesteps (Control Agent)
+	219,136
+	
+
+Reward Design
+Reward Definition
+In reinforcement learning, the agent learns only what the reward function encourages, and its main objective is to maximize this reward over time. The reward function is evaluated at every timestep and returns a number indicating how good the action was, these values are summed over an episode. Due to this, the design of the reward function has a big impact on the final behavior of the policy [IBM RL].
+The reward function adapted from the reference project [Reference Repo] tracks the policy’s ability to adhere to the target velocity and target yaw. During training, the targets are randomly generated by the environment. The reward is a weighted sum of separate terms that encourage or discourage specific behaviors of the policy. The terms and weights chosen are shown in Table 9.
+Table 9: Reward terms and weights [Environment Files].
+Term
+	Reference Weights
+	Control Agent Weights
+	Alive
+	0.6
+	0.6
+	Pitch
+	0.05
+	0.05
+	Speed error
+	0.15
+	0.15
+	Lean
+	10.0
+	5.0
+	Yaw
+	0.007
+	—
+	Direction error
+	—
+	0.15
+	Uneven wheel speed
+	—
+	0.007
+	 
+Weights have different values, and this tells the policy of which behaviors are more important. Pitch has a small weight because the robot must lean to move. Unlike the other terms, lean can add or subtract reward. This is especially important because it rewards the posture the robot needs to change its speed. A two-wheeled balancing robot needs to lean forward to accelerate and backward to decelerate. This term rewards the policy for leaning toward the target velocity, scaled by the size of the velocity error, and penalizes leaning away from it.
+Baseline Training Setup and Replication
+Baseline Replication and Training
+The repository [Reference Repo], was used as a baseline reference to build the team’s own policy. Only the files needed for training were copied into the project repository: the training command-line tool, the training environments, and the MuJoCo robot model they depend on. In addition, some changes were made to adapt it to the team’s setup. For instance, training was moved to the GPU (CUDA), and an optional limit on training timesteps was added.
+The baseline policy was trained with PPO for 3,000,000 steps, using the default SB3 hyperparameters shown in Table 6 [Training Script]. According to the replication notes, it learns to balance reliably after about 200,000 steps. During training, the model is evaluated every 20,000 steps, and if it has improved, it is saved as the new best model. Snapshots are also saved every 40,000 steps, and each reward term is logged separately to TensorBoard.
+Control Agent and Training Experiments
+The goal of pre-training is to reach the machine learning MVP on the golden evaluation dataset: < 50% fall rate with minimal speed and heading error. This dataset will be similar to the current smooth and hard evaluation schedules, described in the Performance Evaluations section.
+The team developed the Control Agent as its own policy, built from the reference baseline and trained using PPO. It is in charge of balancing, tracking the target velocity, and following a specific direction. Once the Control Agent outperforms the baseline, it will become the reference for future policies.
+The team carried out experiments to pre-train the Control Agent. Their objective was to surpass the reference baseline and to evaluate how well the policy performs on the hard, mixed and smooth evaluation schedules. Table 10 summarizes these experiments, with the change and outcome of each one [Experiment Records].
+Table 10: Pre-training experiments for the Control Agent.
+Experiment
+	Change
+	Outcome
+	1 (STR-96)
+	Direction error computed from the robot’s actual heading
+	0 falls, like the baseline, but heading errors stayed high (about 95°)
+	2 (STR-97)
+	Lean weight reduced from 10 to 5
+	16 falls vs 65 for the baseline, with better speed tracking. Heading error high
+	3 (STR-98)
+	Uneven wheel speed penalty removed
+	Regression: 46 falls; the robot spun through the target heading, so the penalty was later restored
+	4 (STR-99)
+	Heading error added to the observations
+	Heading error reduced to about 4° (mixed) and 13° (hard); 22 falls vs 10 for the baseline (hard)
+	
+
+In the first experiment (STR-96), the hypothesis was that rewarding the agent for reducing the difference between its target heading and actual heading would improve its ability to face the requested direction. The resulting policy balanced as reliably as the baseline, with no falls, but its heading tracking remained poor. In addition, the evaluation was considered too easy to distinguish policies, so a harder evaluation schedule was created for later experiments.
+In the second experiment (STR-97), the hypothesis was that reducing the weight of the lean reward from 10 to 5 would make the lean term less dominant in the total reward, allowing target-speed and heading tracking to have greater influence on learning. This experiment was evaluated on the hard schedule. As a result, the Control Agent showed fewer falls than the reference baseline (16 compared with 65), but its heading tracking did not improve. These falls were counted before the one-second grace period after each fall was added to the evaluation, so they cannot be directly compared with later experiments.
+The third experiment (STR-98) focused on checking whether removing the penalty for different velocities between the left and right wheels would allow the agent to turn more freely. The result was not as expected, and the outcome did not support the proposed change. The Control Agent fell 46 times, compared with 10 for the baseline, and the robot learned to spin without stopping, showing the importance of the penalty. The penalty was later restored, after the fourth experiment.
+Finally, in the fourth experiment (STR-99), the heading error was added to the policy’s observations. This change improved heading tracking significantly compared with the previous experiments. The heading error dropped to between about 2° and 13° across the three evaluation schedules. However, the Control Agent still fell more often than the baseline, especially on the hard schedule (22 falls compared with 10).
+The results of the experiments showed that heading tracking improved only once the heading error was provided as an observation, while reducing the lean weight in the second experiment helped improve the balance and speed of the model. This suggests that the policy had been limited by the information available to it rather than by the reward. However, each experiment was trained only once, so these results show trends, but they do not confirm the improvements.
+All the policies described were trained on a base robot from the reference model. However, the team built a calibrated robot with estimated mass and inertia and estimated motor speed and torque limits. Retraining the policies on this calibrated model (STR-118) has been completed, and its results are being reviewed before they are merged. The information for the new simulation was given by the embedded team to reflect the actual physical robot and was implemented in the MuJoCo environment.
+________________
+
+
+Post-Training:
+Post-training has not yet started, and this section describes the planned approach. It will begin once the pre-trained policy reaches the machine learning MVP. Its main goal is to improve the policy’s out-of-distribution generalization: its ability to keep balancing and tracking commands under physical conditions it was not trained on.
+Fine-Tuning with Domain Randomization
+After establishing a pre-trained policy under fixed simulation conditions, the team will continue training a copy of that policy on a collection of environments with varied physical conditions. This will be the fine-tuning stage. The fine-tuning dataset will consist of environment configurations and parameter ranges, such as different surface friction values, rather than a fixed collection of labeled examples. The actual training experience will come from the policy of interacting with these environments and receiving observations and rewards.
+Training and Evaluation Datasets
+For post-training, two new datasets will be created at the same time. The first is a training dataset with varied physical forces, which will be used to fine-tune the pre-trained model. The second is a separate evaluation dataset, used to measure how well the policy performs under physical conditions different from those it was trained on. This gives an estimate of how well it would transfer to the real robot built by the embedded team. The two datasets need to be kept separate so that the policy is evaluated on conditions it has not encountered during training. These datasets are described in the Data Generation section.
+Physical Parameters
+The team proposes sampling physical parameters within defined ranges at the beginning of each episode. Initially, one parameter will be varied at a time to understand its effect, and combinations will be considered once the individual environments behave as expected. The task, observation format, and action definitions will remain consistent so the policy can continue learning the same balancing and movement behavior across these variations. The original pre-trained checkpoint will be preserved for comparison, and the fine-tuning settings, training steps, and random seeds will be recorded.
+Validation and Comparison
+The fine-tuning environments will be separated from validation and final testing conditions. Validation will guide training decisions and checkpoint selection, while the final test conditions will remain held out from those decisions. The pre-trained and fine-tuned policies will be compared using the same test conditions and measurements, including balance duration and distance traveled before falling. Repeated runs will help determine whether an improvement is consistent. The goal is to improve performance under changed conditions without losing the ability to perform the original task. Once a policy is selected for final evaluation and physical deployment, its weights will be kept fixed so that generalization can be measured without additional training on the test conditions or the physical robot.
+Dataset Quality
+Before the generated environments are used for training or evaluation, their quality must be tested, so that the results reflect the policy’s performance rather than problems in the environments, such as unstable simulations or parameters that do not cover their intended ranges. The team researched several data quality tests to see which could best fulfill these requirements for the MJCF environments. These tests are described in the Data Generation section.
+Dataset Scaling
+The post-training dataset will involve a suite of training environments of the following sizes: 64, 128, 256, 512, and 1024. If 6 physical effects are chosen as parameters, then 64 environments represent one environment for each of the 2⁶ combinations, 128 represent two per combination, and so on. After every data scaling step, a test will be run against the full evaluation benchmark to understand how variance impacts out-of-distribution generalization across interpolation and extrapolation.
+Risks of Post-Training
+The physical variations must be realistic. If the ranges are too narrow, the policy may not handle the real robot; if they are too wide, it may become too cautious or adapt to conditions it will never face. The targets must also stay within the robot’s limits. In addition, the training and evaluation datasets must stay separate, so the evaluation measures how the policy handles new conditions, not ones it has already seen. Finally, the team also needs to be careful when fine-tuning the pre-trained policy. The main risk is forgetting while it adapts to new conditions, the policy may lose performance it had already achieved.
+________________
+
+
+6. Performance Evaluations
+   1. Purpose of Evaluation
+The task that the robot is given is not only to remain upright, but to also follow a target speed and target direction as input from an external source. This task was chosen because it allows the engineers to develop an external, high-level controller with scalability. Target speed and target direction combine to make target velocity. A human pilot as the user or an autonomous algorithm could wield the high level controller to act as a navigation, guidance, or steering system for the robot. But no matter the type of system, from human operations to mechanical systems to software, it is critical to measure the quality of the solution made to address the core problem. 
+
+
+   2. Evaluating Zero-Shot Balancer
+The core problem the team is solving is autonomous movement while remaining upright. The evaluation system measures the performance of the robot with the following metrics:
+
+
+Evaluation Metric
+	Description
+	Survival Time
+	Duration of time the robot remains upright
+	Fall Count (Simulation only)
+	# of times the robot lost balance
+	Target Speed Error
+	| Target Speed - Actual Speed |
+	Target Direction Error
+	| Target Direction - Actual Direction |
+	Total Reward (Simulation only)
+	Reward from the environment
+	
+
+The defined evaluation metrics are recorded as the robot is tested in two forms. The first is the simulation environment which uses Gymnasium and MuJoCo to test the neural network controller. The simulation based evaluation uses a standard reward function without any reward shaping so that the team may faithfully compare the agent’s performance overtime even as developers shape rewards during training. The real world evaluation consists of the machine learning based robot controller deployed onto the real robot for physical, sim-to-real evaluation. The total reward and fall count are simulation only metrics. The former is obvious because the real world is not easily modeled as a markov decision process with a defined reward function that can be easily algorithmically tracked. The reason why Fall Count is only measured in the simulation is because any time spent lifting the physical robot back upright after it falls will disrupt the evaluation schedule and distort the measurement precision.
+
+
+   3. Golden Evaluation Dataset
+The Golden Evaluation Dataset is a set of instructions that serve to measure performance on both the simulation based evaluation and the real world evaluation. The dataset itself is a JSON file that is formatted as follows:
+
+
+Time Interval (seconds)
+	Target Speed (meters/seconds)
+	Target Direction (radians)
+	
+
+These tuples are instructions that are passed into the model, simulating a high-level controller that guides the model. The pre-programmed nature of this golden evaluation dataset exceeds the measurement precision of a dynamic remote controller option, which would be flashier but not consistent in measurement. 
+
+
+   4. Golden Evaluation Dataset Details
+The quantity of data matters in the golden evaluation dataset. There are enough samples to make for an exactly 60 second testing runtime. The quality of the data is extremely important and is measured in several ways. The first is that all samples are tested to ensure they are physically possible demands from the robot. It is critical that the agent is not tasked to perform any maneuvers that the physical robot could not possibly perform, such as accelerations beyond what the motor is capable of. However it is even more essential that the engineers distinguish the difference between impossible and difficult. There are many difficult samples in the form of sharp turns, drastic accelerations, and drastic decelerations. Along with easy samples such as smooth turns and soft accelerations. The team has 4 evaluations. The first is a smoke test where nothing is asked of the agent, just simply remaining upright. The second is the smooth evaluation. The third one is the hard evaluation schedule. The final one is a mixture of the prior two where the engineers have guaranteed that all transitions in speed and direction are physically possible for the specific hardware. Both the smooth and the extreme evaluation schedules are used for simulation development & performance measuring only. The mixed schedule is denoted the “Golden Evaluation Schedule” which is used as a final evaluation test within the simulation and also programmed onto the microcontroller for the sim-to-real test. The engineering team has also measured the maximum distance traveled from the start point given the golden evaluation schedule, this is critical for the real world evaluation because the physical robot cannot exceed the possible distance limitations of the room it is evaluated in. Otherwise the evaluation metrics recorded are not precisely measured due to the undefined behavior of crashing into walls. 
+
+
+   5. Sim-to-real evaluation
+There are quantitative metrics designed for specifically measuring sim-to-real transfer. The Zero-Shot Balancer team leverages Success Rate Gap, a sim-to-real evaluation for robots that is introduced by [Learning Agile Robotic Locomotion Skills by Imitating Animals]. It is defined by the following equation: 
+
+
+
+
+
+Where success in the simulation is measured by each of the metrics tracked by the golden evaluation schedule tested within Gymnasium/MuJoCo. Meanwhile success in the real world is measured by each of the metrics tracked by the golden evaluation schedule tested within the real world, using the machine learning model deployed onto the physical robot. Success as an abstract metric can be substituted for target speed error and target direction error.
+
+
+Another such metric is the Time-to-Failure (TTF) Gap, introduced by [Learning to walk in minutes using massively parallel deep reinforcement learning], is a similar metric but instead tracks the survival time difference in survival time between the simulation-based evaluation and the real-world based evaluation. TTF is defined as follows:
+
+
+
+This metric is especially significant because it is specific to the primary evaluation metric, survival time, which is critical for the base function of a self-balancing robot.
+
+
+   6. Physical Parameter Domain Randomization
+The stretch goal is to test the machine learning controller’s ability to generalize well within environments that contain variable physical forces & conditions, dubbed “physical parameters”. This stretch goal is much more pertinent to the simulation as it can be very difficult to replicate many of these changes in physical dynamics with precision and control in the real world. As stated in the data generation section of this design document, the physical parameters that are varied are as follows: 
+Property
+	Variation represented
+	Completed study
+	Chassis CoM
+	Offsets along body axes; two-axis grids
+	Fore–aft, vertical, and joint sweeps
+	Motor strength
+	Fraction of reference torque capacity
+	Motor-capacity sweep
+	Chassis mass
+	Mass and central inertia scaled together
+	Regression coverage
+	Friction and damping
+	Wheel-floor sliding friction; wheel-hinge damping
+	Regression coverage
+	Selected dimensions
+	Chassis dimensions and wheel radius
+	One resized baseline qualified
+	
+
+Evaluation on environments that contain these varied parameters still reuse the previously stated 4 golden evaluation schedules for testing the model’s ability to control the robot. It is expected that performance on the new MJCF-based benchmark of environments will be quite poor initially, therefore the engineers move on to the post-training phase of the project to enhance Zero-Shot Balancer’s generalization in the sim-to-real gap. The reason why out of distribution generalization matters in the context of robots and physical forces is because no simulation can perfectly model real world dynamics. There will always be unknown imprecisions or factors that are entirely unconsidered when designing simulation software. Therefore, having a model that is robust to distribution changes is essential in robots and machine learning.
+________________
+
+
+ML Development Life Cycle:
+ML Team Phases
+The machine learning portion of the project will follow five main phases: data generation, pre-training, post-training, evaluation, and deployment. These phases provide clear milestones for developing, testing, and transferring the reinforcement learning policy from simulation to the physical robot.
+Phase 1: Data Generation and Benchmark Development
+The first phase focuses on building the simulation environments needed for reinforcement learning. The primary artifacts will be MJCF files, environment configurations, parameter ranges, and scripts used to generate training conditions.
+The team will first create a baseline MJCF model of the two-wheeled robot using MuJoCo. This model will include properties such as robot geometry, joints, actuators, mass, and surface friction. Measurements from the embedded team will be incorporated as the physical robot design becomes more finalized.
+The team will then create three groups of environments: training environments, fine-tuning environments, and a held-out evaluation benchmark. Candidate variations include friction, payload, initial tilt, and external disturbances. Before training begins, the environments will be tested to verify that observations, actions, reset behavior, and termination conditions work correctly.
+Deliverables: validated MJCF model, training and fine-tuning environments, held-out benchmark, and environment quality tests.
+Phase 2: Pre-Training
+The second phase focuses on developing the baseline reinforcement learning policy. During this phase, the team will finalize the model architecture, RL algorithm, reward function, and training recipe.
+The reward function will encourage the robot to remain upright and move as intended while penalizing behaviors such as excessive tilt, falling, or unnecessary motor activity. Stable-Baselines3 will be used to train the policy in the baseline environments.
+Performance will be monitored using validation environments, and the selected checkpoint will then be evaluated on the held-out benchmark. These results will serve as the baseline for later comparisons.
+Deliverables: finalized architecture and algorithm, reward function, training recipe, trained baseline policy, and initial benchmark results.
+Phase 3: Post-Training
+Post-training will be used to improve the robustness of the baseline model if additional training is necessary. A copy of the baseline policy will be fine-tuned using environments with varied physical conditions.
+Parameters such as friction, initial tilt, payload, or disturbances may be randomized between episodes. The team will first test individual variations and later consider combinations of parameters.
+The original baseline policy will remain unchanged so that its performance can be directly compared with the fine-tuned model.
+Deliverables: fine-tuned policy, documented training variations, validation results, and comparison against the baseline policy.
+Phase 4: Evaluation
+The evaluation phase will measure how well the final policy performs on the golden evaluation dataset and generalizes to unseen conditions. Before evaluation, the selected model weights and benchmark will be frozen.
+The baseline and fine-tuned models will be tested using the same held-out environments. Metrics may include balance duration, distance traveled before falling, successful episode rate, and recovery from disturbances. Multiple runs will be performed to measure consistency.
+These results will determine whether post-training improved robustness and whether the model is ready for deployment.
+Deliverables: final benchmark results, baseline versus fine-tuned comparison, and selected deployment model.
+Phase 5: Deployment
+The final phase transfers the trained model from simulation to the physical robot. The selected model will be converted and quantized using TensorFlow Lite so that it can run on the robot's embedded hardware.
+Regression testing will verify that conversion and quantization do not significantly change model behavior. The ML and embedded teams will also confirm that physical sensor observations and motor commands match the formats used during simulation.
+Once these checks are complete, the policy will be deployed and tested on the physical robot under controlled conditions. The results will show how successfully the learned behavior transfers from simulation to the real system.
+Deliverables: quantized TensorFlow Lite model, regression testing results, deployed policy, and physical Sim2Real test results.
+________________
+Mechanical Systems
+In order to fully realize this project, a large portion of the output depends on the “sim2real” aspect -- ensuring that the team is able to accurately translate the simulation environment to the real world with a physical robot. This means diving into a small amount of physical engineering and embedded systems work to ensure a smoothly achieved deliverable.
+Embedded Systems
+An essential component of the project are the microcontrollers and sensors used on the robot. Given its scope, there were a few hardware requirements that demanded thorough research to align with the team’s design philosophy. The goal for the physical product is to be as compact as possible while having above adequate computational power to run a machine learning model.
+
+ESP32
+This microcontroller is a small dual-core processor capable of running up to 240MHz and     
+ has 520KB of total SRAM, shared by firmware and the TFLite runtime. Additionally, 240MHz should be fast enough for the ESP32 to relay and receive information from other controllers and sensors on the robot.   
+Figure 2 Pinout diagram of the ideaspark ESP32 development board with a 0.96-inch OLED display.  
+
+IMU
+Also known as an Inertial Measurement Unit is a small device set up with an accelerometer and gyroscope. This gives the robot the ability to measure linear and diagonal along the X, Y, and Z axis along with rotational speed, pitch, roll, and yaw. Without this unit, the robot would be incapable of determining its position in a 3D space.
+Figure 3 Pinout diagram of the TDK InvenSense MPU-6500 inertial measurement unit (IMU) module.  
+
+
+Motor Driver and Encoders
+  
+
+Figure 4 Comparison of MPU-6050, MPU-6500, and MPU-9250 sensor specifications.
+
+
+Drivers act as a middle man for microcontrollers and motors. This provides protection from voltage spikes that could potentially fry other components connected to it. It also provides an easy interface to control the direction and speed the motors spin. The encoder is used to measure shaft speed, direction, and position.
+  
+Figure 5 TB6612FNG motor driver pinout and example wiring connections.
+Figure 6 Motor and encoder wiring diagram showing wire colors and connection functions.  
+  
+
+Figure 7 Motor driver pin assignments, input/output designations, and signal functions.
+
+
+
+
+These components are the core to a functioning robot capable of balancing itself. Once fitted with firmware and a trained ML model, the robot should be able to accomplish the following: 
+
+
+MVP
+- Ability to balance and maintain itself up right using deployed model greater than 50% of the time
+- Ability to stop and transition to moving forward or backwards through varying speeds
+- Ability to recover from unpredictable forces
+- Ability to read positional data and speed 
+
+If all MVP requirements are met, the team will proceed with additional hardware changes to enhance the project with the following:
+
+
+
+Beyond MVP
+- Ability to recover from terrain changes
+- Audio feedback loop that plays based on tilt angle or if robot is too close to falling over
+- Training model using a camera for obstacle avoidance/following 
+- Transmitting sensor data OTA for real time telemetry for diagnosing purposes 
+
+
+Hardware Verification
+Before working with any of the peripherals, it is integral to the project’s success to assure that they work appropriately. An issue with hobbyist microcontrollers and boards is fault products, counterfeit technology, or clone boards that do not work as advertised. Dealing with faulty hardware is a preventable situation that calls for verification.
+
+To accomplish this,  the embedded team verifies if each board works by uploading trusted and working code to measure the peripherals’ baseline. For the IMU, the team needed to verify the position it reports is accurate and can determine it is moving. This was confirmed via logs on a serial monitor while the IMU was put under set conditions. Along with that, the motor encoders will be put under its own set conditions to also confirm it is reading the motor axle’s position and speed accurately.
+
+
+The peripherals’ readings are verified manually to guarantee that they are working as advertised and will not cause issues in the project. 
+
+
+Firmware Architecture
+The heart of the physical robot is the firmware running on the ESP32. The plan is creating three layers that handle hardware abstraction, services, and applications where dependencies flow down whereas data flows bidirectionally. Each layer isolates different aspects of code to help with cleaner development, easier debugging, and seamless integration while also letting the team easily switch hardware. 
+Figure 8 Proposed three-layer firmware architecture showing application, services, and drivers, with downward dependencies and bidirectional data flow.  
+
+
+Hardware Drivers
+This layer handles the abstraction of all hardware on the robot. As mentioned before, the robot uses an IMU and motor encoders to balance itself. The code here will be derived from open-source libraries and be modified as needed. By making use of abstraction, the team does not need to address registers to configure the IMU or motor encoders.
+
+Services 
+This layer focuses on actions the robot can do, hence the layer name services. This layer uses functions from the hardware driver layer to create behaviors the robot can do. For the project, it is imperative for the robot to 
+
+- build vectors describing the robot’s real time position to feed to the ML model
+- estimate the wheel’s velocity using the IMU’s accelerometer 
+- make decisions based off of real time IMU data via a policy controller 
+- generate logs for debugging and telemetry purposes
+
+These actions will be orchestrated by an additional layer in the main control loop.
+
+Application 
+This layer orchestrates what actions the robot will do via a main control loop. It also will be the place where the robot can override any faulty actions the ML model decides to perform to prevent damage to the robot chassis and hardware.
+
+Memory and Resource Constraints
+Limited memory is the biggest concern with any project containing embedded systems. The limited resources means optimizing code and compressing the model such that both can successfully run without bogging down the ESP32. The team’s ESP32 has 520KB of total SRAM, but the model’s runtime memory budget must leave room for firmware, stacks, and buffers. There is an additional 4MB of built in flash storage for the entire project’s firmware. The team is anticipating using well below the allotted memory even without optimization but will prioritize having quality code to reflect what is seen in industry.
+
+Another major concern is how fast the CPU cycles are on the ESP32. The ESP32 can run at up to 240MHz, or 240,000 clock cycles per millisecond. The sensor sampling rate and control-loop update rate are separate from the CPU clock rate; the CPU does not need to run at the IMU’s rate. The microcontroller must read the data off the IMU, interpret it, and respond accordingly within each control-loop period so that the robot balances. Keeping track of this number is especially important when training the ML model because whatever control-loop update rate the physical robot uses, the model must be trained under those conditions as well.
+
+Designing Around Integration
+The firmware is designed with integration in mind. This means assuring that each component works together and agrees on units, timing, and data formats.
+The team uses the following across the firmware and in communication with the ML team so that the they use the following in their training pipeline:
+- Angles measured in degrees with the zero point set at [TBD when calibrating robot]
+- Angular rates in deg/s
+- Wheel velocity in rad/s but is subject to change based off of encoder readings
+- Time measured in ms
+
+Additionally, timing should be shared across all layers in firmware architecture. For example, instead of isolating a sensor reading within a clock cycle, each reading should be relative to each other's time and build a context around it. Doing so provides a pool of behaviors that describe what the robot is doing in real time. This means the model does not respond to a single sensor reading but rather a description of what the robot is sensing within a given set time. Under this logic, the firmware should be able to generate an average on the robot’s position and speed within a set time for the model. At the moment, this set time is undetermined. The team can use the known information on CPU clock rate to find a theoretical time, but ultimately, trial and error will be the best way to find the set time that works for the robot.
+
+While the goal is to accomplish a seamless integration, inevitably, there will be issues. This can vary from changing the robot’s firmware configuration, altering firmware to better interact with the ML model, or retraining the model to accommodate any firmware or physical changes to the robot. While the team is anticipating these problems, designing quality firmware with good traces will help navigate the integration phase efficiently. 
+
+Physical Engineering
+Initial Bill of Materials (BOM)
+Item
+	Spec / Model
+	Qty
+	Unit Price
+	Line Total
+	Source
+	Key Notes
+	ESP32 dev board
+	ESP32-WROOM-32 DevKit
+	1
+	$7.99
+	$7.99
+	Amazon
+	USB-C 38-pin, WROOM32
+	IMU
+	MPU-9250 breakout IMU
+	1
+	$9.08
+	$9.08
+	Amazon
+	GY-91 MPU9250 + BMP280
+	Motor driver
+	TB6612FNG breakout w/ dual H-bridge
+	1
+	$5.99
+	$5.99
+	Amazon (2-pack)
+	Includes 1 spare
+	Motors
+	JGB37-520 12V gearmotor w/ encoder kit
+	2
+	$24.39
+	$48.78
+	Amazon (2 kits)
+	12V / 330RPM; includes wheels & brackets
+	Batteries
+	2x 18650 Li-ion protected
+	2
+	$3.69
+	$7.38
+	Liion (2 cells)
+	Protected 2600mAh 10A, 69mm length
+	Battery holder
+	2S 18650 holder w/ wire leads
+	1
+	$3.50
+	$3.50
+	Maker's Pet
+	Fits protected cells
+	Buck converter
+	LM2596 adjustable step down module
+	1
+	$3.79
+	$3.79
+	Amazon (10-pack)
+	Set 5V for ESP32; 9 spares
+	Switch
+	Small toggle/slide switch
+	1
+	$5.79
+	$5.79
+	Amazon (5-pack)
+	Battery-line power switch; 4 spares
+	Board
+	Small protoboard
+	1
+	$5.78
+	$5.78
+	Amazon (10-pack)
+	9 spares included
+	Wiring/misc
+	22–24AWG wire & JST connectors
+	1
+	$0.00
+	$0.00
+	Already owned
+	On hand
+	Fasteners
+	M3 screw/standoff/nut assortment
+	1
+	$0.00
+	$0.00
+	Already owned
+	On hand
+	Chassis
+	3D printed
+	1
+	$0.00
+	$0.00
+	Already owned
+	Filament on hand
+	Total
+	
+
+	
+
+	
+
+	$98.08
+	
+
+	
+
+	
+
+Custom CAD Design
+To ensure this project's success and originality, the hardware team chose to CAD the main chassis, as well as any secondary, attached parts that may require it. This work uses the free-for-student online web-based CAD platform, Onshape. the team has developed the chassis and worked through its printing, physical assembly, and the measurements and exports shared with the machine learning team. The design has changed as each of those steps provided information that was not available at the start.
+The Initial Bill of Materials and Embedded Systems sections describe the hardware configuration and component requirements. For the chassis, the immediate questions are where the parts fit and whether they can be installed and reached. The motor brackets need secure mounting surfaces, the wheels need clearance, and the electronics need accessible mounting space. A part that fits in the assembly model can still be difficult to fasten once another platform is in the way.
+
+
+An open design with structural supports shifted to the outside of the chassis was chosen for maximum accessibility to internal components. Outside guides and/or holding mechanisms to keep wires, looser parts, or electronics from slipping or falling out during fast movement and in the event of a collision remain under consideration as the build develops. These are possible additions to the chassis; they have not all been implemented in the printed prototype.
+the team uses representative component models in the full CAD assembly to consider their sizes and placements together [CAD History]. Some of those models were approximations before the actual hardware arrived. Printing then introduced orientation and connection problems, while assembly revealed fit, tool-access, and ground-clearance issues. the team has used those observations to revise the chassis. The mechanical work has reached a partially assembled v1.1 build and a v2 print in progress; controlled balancing remains a separate integration step.
+The preliminary design of the custom 3D-printed chassis established the structural arrangement and representative hardware. Before the detailed custom assembly was finished, the team used this model to determine how the wheels, motors, platforms, and supports could occupy the same structure. It did not yet represent every board or mounting detail that appears in the later design.
+Because the physical parts had not arrived, the team used estimated sizes and comparable open-source component models to develop the layout. This allowed us to continue the CAD work while leaving room for correction. The limitation was straightforward: a similar bracket or motor model could help establish space, but its dimensions could not guarantee that the ordered part would slide into a printed mount. The preliminary geometry served as a starting point for the detailed chassis rather than a final fit specification.
+
+
+  
+
+Figure 9  Preliminary assembly layout before the detailed custom chassis and component placement were completed.
+Later revisions retained the platform-and-support arrangement while changing its proportions, component interfaces, and upper geometry. The preliminary model established the layout; subsequent print and assembly work supplied the details needed to refine it.
+V1 Chassis Geometry and Dimensions
+The v1 design developed the preliminary concept into a custom chassis with a lower platform, an intermediate platform, vertical supports, and the cowboy hat at the top. The v1 overall-dimensions drawing records a chassis 120.00 mm wide, 116.37 mm deep, and 189.74 mm high. These dimensions describe the illustrated v1 chassis. the team will need updated measurements for the revised v2 assembly.
+The vertical supports connect the platforms while leaving the sides accessible. The intermediate platform creates space for hardware above the motors, and the hat becomes part of the upper structure. Together, these features define both the mounting space and the distribution of printed material. the team developed the geometry in Onshape [CAD History].  
+
+
+Figure 10V1 chassis design shown in front and right-side views.
+
+
+The drawing provides a record of the earlier design, even though the subsequent assembly exposed changes that it needed. In particular, overall dimensions alone could not show how much the tires would compress or whether a drill could reach the bracket screws after the platforms were joined.
+Upper Mass and Cowboy Hat Integration
+The initial plan placed the larger, heavier components (motors and battery pack) near the bottom to limit how much they raised the overall center of mass. That placement rationale still left a question about the amount of mass in the upper structure. For the selected robot design, the team considered the initial upper mass too small. the team therefore chose the cowboy hat as a unified upper feature that would add material near the top and center while remaining part of the printed chassis.
+the team has not yet tested whether the hat improves balancing. Adding upper mass changes the mass distribution, so the team needs to evaluate its effect with the rest of the robot and its controller. the team will include its contribution in the updated mass properties and evaluate it when the robot is ready for balancing tests.
+The hat also required more CAD work than simply placing an object on top of the supports. The starting model was downloaded mesh geometry. An STL file describes a surface with triangles, which behaves differently from a native solid built from sketches and features. Onshape supports references to imported meshes and some operations on mixed mesh and solid geometry, but the available operations depend on the geometry involved [Onshape Mesh Guide]. This difference became a practical obstacle during integration.
+the team worked through the mesh problems by repairing non-manifold edges, using Blender in the export workflow, and finding a way to integrate the result into Onshape. Non-manifold edges are mesh connections that do not form a consistent surface boundary. Repairing those connections was part of making the downloaded model usable in the chassis workflow. The Onshape history records the team's insertion of the cowboy-hat-tray STL on October 1 [CAD History].
+the team retained the resulting upper feature in both the v1 drawing and the later assembly. the team also needs to include the intended printed hat in the mass estimate without counting an overlapping duplicate as additional physical material. Earlier export and mass notes distinguish an included chassis hat from an extra overlapping occurrence that was omitted.
+Early Print Attempts and Orientation Changes
+  
+
+
+
+Figure 11 V0 single-part print failed with tangled extrusion around the chassis.
+Parts are printed at home on a Bambu A2L 3D printer. The original plan left PLA, PETG, and PLA+ under consideration, with the final material choice dependent on the build requirements. The first attempt, v0, printed the chassis as a single part and failed with loose, tangled extrusion around the structure. The attempt showed the team that the CAD assembly needed a separate manufacturing plan: the desired robot geometry was not arranged so every platform could print successfully in the same orientation.
+the team then began cutting the chassis in Bambu Studio so that each platform could lie flat on the build plate and the remaining sections could print vertically. The v1.0 attempt still had a problem: the top platform was not separated on its own. That print had the rough, hairy result that prompted another correction. After the separation was addressed, v1.1 printed successfully and became the version used for the first hardware assembly.
+  
+
+
+
+
+
+Figure 12 Partially assembled v1.1 chassis with motors, wheels, upper platform, and wiring.
+Separating the platforms made their print orientation an explicit choice, and joining the printed sections introduced connector decisions. The later prints therefore depend on both the CAD geometry and the way the parts are divided and connected in Bambu Studio.
+Infill and Connections Between Printed Parts
+the team needs enough material around the chassis supports and mounting regions to survive assembly, but adding material everywhere also adds weight. the team has experimented with assigning different infill settings to different parts of the print. Infill is the internal pattern and density within the printed shell. Varying it allows the manufacturing setup to place more material where it is needed without using the same density throughout the chassis.
+Through the printing and drilling work, the team found approximately 45 percent geometric infill useful where the plastic needed to accept holes and remain strong. This is an observation from the fabrication process, rather than a measured strength rating. the team has not established a numerical relationship between infill percentage, screw retention, and chassis strength. Wall thickness, hole position, and the local printed geometry also remain relevant to how the part can be assembled.
+the team needs to keep the saved files in context. Earlier mass calculations use a chassis estimate described as 45 percent gyroid infill, while the saved global profiles for the later print projects show a lower density. Those records do not establish one final setting for every printed region. Before the next mass update, the team needs to associate the actual sliced configuration with the specific chassis revision so that the estimated weight describes the part being manufactured.
+Cutting the chassis into sections makes the connection between those sections part of the design. the team has used plug connectors in Bambu Studio and is now experimenting with snaps for the print currently underway. A connector that is easy to create in the slicer still needs to fit the printed part and hold the assembly together in practice.
+the team has not yet evaluated the snap connectors or established that they work better than the plugs. the team still needs to check their fit, ease of assembly, and retention when the new parts are available. Additional filament has been ordered to allow for further reprints if the geometry or connector settings need correction. the team expects further physical iteration if the current print reveals problems with the geometry or connections.
+
+
+V1 Assembly and Access to Motor Fasteners
+After v1.1 printed successfully, the team began installing the actual hardware. The motor and wheel assemblies, battery pack, and breadboard were installed before assembly paused for the v2 CAD changes. the team had reached a partial hardware build, with wiring and control integration still unfinished.
+The assembly exposed an access problem at the lower platform. Once the upper sections were joined, reaching the motor-bracket holes from above was difficult. the team initially used a soldering iron to melt an opening where the drill could not reach, then drilled from underneath. The workaround required screws through the platform with nuts, leaving a different fastening arrangement from the preferred top-down attachment.
+For the next assembly, the team should prepare the bracket holes while the lower platform is accessible. the team can then install the motor fasteners before the upper pieces obstruct the working area. This lesson came from attempting the assembly, and it changes the order of operations even where the CAD geometry itself might otherwise remain the same.
+V2 Revisions Following the Physical Build
+The v1.1 assembly revealed that the chassis sat too close to the ground once the rubber wheels carried its weight. the team observed scraping at approximately 15 degrees of pitch. The chassis needs room to tilt without the lower platform contacting the surface. The angle is an approximate observation from assembly, not the result of a controlled clearance test.
+For v2, the team lowered the regions of the bottom platform where the motor brackets mount, with the intention of increasing usable clearance for the rest of the chassis. The revised geometry also widened the lower support bases and added fillets. At the same time, the actual motor brackets were measured so their mounting regions could be matched more closely and the brackets could slide into place. The v2 assembly model records the proposed layout.
+
+
+The v2 print is underway. Once it is available, the team will check bracket fit, connector fit, and ground clearance with the real hardware installed. the team has redesigned the chassis in response to the assembly problems and still needs to verify those changes on the physical build.
+  
+
+Figure 13 V2 full chassis assembly drawing showing the revised platform and support geometry.
+
+
+Mass Properties and Simulation Measurements
+the team supplied the machine learning team with robot dimensions and center-of-mass information to help connect the physical design with its simulation. The local mass workbook documents an earlier assembly estimate using fourteen component entries [Mass Workbook]. It combines component masses with estimated positions to obtain the overall center of mass. For each coordinate, one multiplies each component's mass by its coordinate, sums those products, and divides by the total mass.
+the team needs to distinguish these estimates from physical measurements. Several component masses were assumed or based on comparable parts, and the component centers were estimated from bounding-box midpoints. The chassis input came from a recorded slicer estimate. A bounding-box midpoint describes the center of the outer dimensions; it does not necessarily describe where the actual mass is concentrated inside a motor, battery holder, or infilled printed part.
+The earlier assembly estimate totals 945.16 g. Relative to the chassis-bottom origin, its calculated center of mass is X = -0.708 mm, Y = -0.055 mm, and Z = 60.565 mm. The displayed precision comes from the calculation and does not imply equivalent measurement accuracy.
+the team also needs to provide the frame of reference with these values. The listed Z coordinate is measured from the chassis-bottom origin, while the workbook also provides a different height relative to its estimated ground plane. Neither should be substituted for the distance above the wheel axis without accounting for the geometry. The workbook also notes a difference between the wheel model's measured diameter and its nominal name, which needs to be reconciled with the actual wheels.
+These results predate v2, so the team needs to recalculate them for the new chassis. Revised supports, mounting regions, connectors, and infill can change the printed mass and its distribution. The earlier workbook remains useful as a record of the calculation method and a starting point for the simulation team. the team will need an updated estimate and physical measurements where possible to describe the new robot.
+CAD Handoff and Current Mechanical Status
+the team has also prepared the CAD work for use outside Onshape. the team provided exports for the machine learning team, and the project folder contains STL, GLB, and STEP geometry. The export notes describe a STEP delivery organized as a body and two wheels, with millimeter units and a recorded chassis-origin convention [CAD Export Notes]. They also document faceted surfaces from the original tessellated geometry and the removal of an extra overlapping hat occurrence and a small sensor from that particular export.
+the team needs to give the simulation team a clearly defined model. An omitted object, a duplicate surface, or an unclear origin can change how the receiving team interprets the geometry. The export record states that the STEP was reopened to check its component count and chassis height. The project also contains an inspection viewer and separated assembly pieces prepared for the ML handoff. These files document geometry preparation, although they do not by themselves confirm successful import into the team's simulator.
+The current mechanical result is a custom CAD assembly, several fabrication iterations, a partially assembled v1.1 prototype, and a v2 redesign being printed. In the next build, the team will test the snap connections, measured bracket interfaces, and clearance changes. the team should prepare the mounting holes before stacking the platforms and use the resulting configuration for the next mass and dimension update. This sequence carries the lessons from v1.1 into the new build while preserving a clear distinction between completed work and the checks still ahead.
+
+
+
+
+Embedded Team Phases
+Phase 1: CAD/Design & Parts Delivery (current)
+* Start with solid CAD for chassis
+* Refine with exact measurements when items come in
+Deliverables: all items in stock & final CAD 
+
+
+Phase 2: Assembly & Github Repo Replication
+* Print final CAD(s)
+* Put everything together
+* Upload same firmware as Github
+* Iterate/fix as necessary (unknown amount of time)
+Deliverable: working self-balancing bot per Github repo 
+
+
+Phase 3: Sim2real Fitting (concurrent with ML Phase 3/4)
+* Modify firmware to match sim environment
+* Ensure easy transition
+
+
+Phase 4: Sim2Real Implementation (same as ML Phase 5)
+* Quantize the model using TensorFlowLite
+* Regression testing
+* Deploy onto robot
+* Fix/iterate on mechanical issues
+
+
+Obtaining Data
+        Unlike other forms of machine learning, the data used in reinforcement learning comes from the agent’s interactions with the environment. The environment that Zero-Shot Balancer is trained in is Gymnasium and MuJoCo, which are detailed in the simulation section of this document. However MuJoCo does allow for external environment files denoted as MJCF files, which are in the form of XML files that MuJoCo accepts as parameters for the physics engines’ dynamics. The XML files that the team leverages to achieve the MVP come from an Open Source github repository. There are also python files that interact with the MJCF files that allow the agent to receive further information from the environment, these are created by the engineers. Finally, for post-training there are many MJCF files synthetically generated by the engineering team for domain randomization of physical parameters. This is further detailed in the Data Generation section of this document.
+        
+Training
+In reinforcement learning, there is no fixed collection of labeled examples. The training experience comes from the policy interacting with the simulated environments and seeing how much reward the robot gets. The team uses Proximal Policy Optimization (PPO), implemented in Stable-Baselines3, which collects 2048 steps of this interaction and then uses them to update the policy, repeating this process throughout training (see the Pre-Training section).
+Training is divided into two steps: pre-training and post-training. In pre-training, the policy is trained under fixed simulation conditions until it reaches the machine learning MVP on the golden evaluation dataset. The policy is rewarded for staying upright and following the target speed and heading (see the Reward Design section). In post-training, the team will continue training a copy of the pre-trained policy on the training dataset with changing physical conditions created through the data generation work. This will be the fine-tuning stage (see the Post-Training section).
+To choose the best policy, the model is evaluated every 20,000 steps during training. If the results of the evaluation show an improvement, it is saved as the best model. After training, each policy is compared with the reference baseline using the same measurements. The total reward is a comparable metric because the engineering team worked to fix the same reward within evaluation, despite reward shaping in training. In addition, a change in the reward or the observations is only kept if it improves these measurements, as was done in the Control Agent experiments (see the Training Experiments section).
+Validation will help the team make training decisions and choose the best checkpoint. The evaluation datasets, such as the golden evaluation dataset and the final evaluation, will not be used for training. This way, the policy is tested on conditions it has not seen before. Once a policy is chosen for the final evaluation and the physical robot, its weights will be kept fixed. This allows the team to measure how well it generalizes without training it again on the test conditions or on the physical robot.
+Selecting the model and shaping prompts
+The Zero-Shot Balancer project does not use any generative AI component within the project. The engineering team does leverage generative AI effectively through the interfaces of chat completion LLMs and LLM based coding agents. For chat completion LLMs, prompts are shaped as needed to fit the question being asked so that the engineer learns all they can from the internet’s knowledge. For LLM based coding agents, prompts are shaped so that code changes are small and precise, which makes both reviewing easier and lowers the risk surface area for hallucinated or misinformed code changes.
+
+
+MVP
+Definition of Done
+        The team will have two separate MVPs before integration in the first semester of this course, one for the ML team and one for the embedded team. The team determines that for the project to be considered done it will need a functioning physical robot, a simulation-trained controller, and successful integrations of these two systems at the end of Senior Design II. The team being split up into a Machine Learning and an Embedded team allows for the team to have separate milestones along the way but for the true definition of done the systems need to be fully integrated. The hardware and simulation components will be tested individually before being combined for error tracking of any unpredicted movements. The final demonstration is a trained model controlling the fully assembled robot using the real time sensor readings. 
+        Aside from the integration, the MVP for the physical robot includes the assembly of the chassis, wheels, motors, battery pack, microcontroller, and sensors. Each of these components are mounted onto the 3D printed frame and allow the wheels to move without being interfered with by the body of the robot. The embedded team verifies the sensor readings, encoder measurements, and motor operations before the simulation model is integrated onto the hardware. The machine learning team has their own MVP aside from the larger goal of integration. The team aligns that for this MVP a trained policy needs to accept the defined observations and generate the required movements of the wheels. The golden evaluation benchmark will be used to evaluate the results of the simulation. The model checkpoint is identified and associated simulation settings will be then used for the deployment. 
+        
+Design Process for Physical MVP
+On the physical side of the project, the team is prioritizing getting a Minimum Viable Product as quickly as possible in two phases: initial build and machine learning integration. The initial build and operation with reference firmware is the Senior Design I MVP while deployment of the ML team’s model is the integration milestone of Senior Design II. There are existing kits, open-source designs, and existing codebases that dictate how to properly build a two-wheel balancing robot. To ensure that the project has sufficient depth, from the beginning, the team decided to take on the bulk of the design with a custom system. This includes custom CAD and physical engineering and custom firmware that will be written specifically for the team’s exact robot. This means that a large part of the MVP revolves around hardware design. The team is approaching this step-by-step with adequate preparation time for the whole system. This means that parts are to be researched and discovered first so that they may be ordered with much advance shipping time.
+
+During this process, the CAD and physical engineering that cannot be ordered will be completed. This is done in Onshape and printed on a 3D printer that the team has access to, with PETG or PLA filament, depending on the research done and what is needed for the project. Multiple iterations for the physical robot are expected. There is enough room for error for parts to be the wrong size that would affect the placement of hardware on the robot. This could affect the center of mass for the robot which would require the ML model to be retrained. 
+
+
+Designing and 3D printing a robot specifically for this project gives the team full control over other things too. Modeling each hardware component and assembling it in the robot gives the team accurate information needed for efficient training on the ML model. The team also has access to 3D models of the robot to be trained on with a robot specific center of mass, an important piece of data for a self balancing robot. A 3D model allows for both teams to work asynchronously without a physical robot and make significant progress before the robot is physically available. 
+
+Once the physical robot is available, it is anticipated to go through multiple iterations. This is to be expected in anything 3D printed due to tolerances and physical factors that affect a physical output but not the virtual one. Consequently, change will be made to the 3D model to fix any issues and the files will be given to the ML team so that they can retrain their model based off of the new changes. The design pipeline for the physical MVP provides a streamlined process for others to not be blocked on their tasks while still providing flexibility to make any changes accordingly. 
+
+ 
+Expected Outcome for Physical MVP
+        The second phase of the physical MVP to be completed during Senior Design II is machine learning integration, where the team intends to directly map the simulation neural network and machine learning protocols to the physical robot. This will be done by ensuring maximum communication & compatibility with the machine learning team from the start to initialize physical constants that will be present on the final physical robot (weight, center of mass, torque).
+        The team intends to have this physical MVP as quickly as possible with as much accuracy as possible. Thanks to early experiments showing that the simulation is quite capable of performance as intended, the team expects the physical MVP to follow suit quickly. This is due to the design pipeline, which has allowed for the ML team and Embedded team to work without a physical robot because the team’s 3D model provided both teams with enough data to work with. The rapid development of the physical MVP brought forth issues the team didn’t anticipate. During the first attempt at assembly, the robot was too close to the ground because the tires it used were minorly deflated when it held the robot’s weight. As the robot continues to be worked on, it is anticipated to have more issues that will require redesigns. All of this is necessary to meet the team’s physical MVP. 
+
+With a properly assembled robot, it is ready to be equipped with a ML model. This is because the robot is fitted with hardware that gives it the ability to determine its own position, speed, and wheel speed. It provides memory to hold the ML model that will give the robot the ability to respond to external stimuli using the robot’s collected data. 
+
+It is expected for the physical robot to be able to balance itself at least 50% of the time only using the ML model. While the physical product is part of that MVP, it alone will not keep the robot balanced. The robot’s firmware flashed into the hardware will do the heavy lifting. It will provide the robot with the ability to “sense” its surroundings using selected sensors such that the ML model can act accordingly based on those readings. 
+
+The success of the MVP relies on quality firmware, efficient physical design, and seamless integration between the firmware and ML mode. 
+
+
+Design Process for Machine Learning MVP
+The machine learning team first replicates the results from an open source repository containing reinforcement learning code for a self balancing robot to establish a baseline control reference. The design process begins by constructing a golden, quality tested evaluation benchmark scheduled with specific timestamps, target speeds, and target directions. Systematic experiments are then conducted on the control model to iteratively improve its performance against this established evaluation benchmark. Once the minimum viable product threshold is achieved, specifically requiring a minimum of over 50% upright survival time on the evaluation benchmark, the team proceeds to execute comprehensive ablation studies. These intensive studies require a factorial volume of testing to evaluate all possible combinations of parameter modifications, thereby ensuring a rigorous causal understanding of each experimental change.
+Expected Outcome for Machine Learning MVP
+The machine learning team engineers and trains a software controller via reinforcement learning within a physics simulation environment, where the algorithmic model functions as an active agent. The minimum viable product requires constructing an evaluation benchmark within the simulation that tasks the agent with three primary operational objectives: maintaining self balancing stability, tracking an input target speed, and matching an input target direction. The expected outcome for the minimum viable product is to successfully achieve over fifty percent upright survival time on the golden evaluation benchmark, alongside minimized error in target speed and minimized error in target yaw. Once the simulation trained agent meets or exceeds this required survival threshold and performance profile, the machine learning minimum viable product is officially achieved.
+Potential Machine Learning Stretch Goals
+Development on a comprehensive evaluation dataset containing varied physical parameters such as center of mass offsets, actuator strength limitations, terrain slopes, surface friction coefficients, and wind resistance is already underway. The primary stretch goal focuses on testing the out of distribution generalization capabilities of the trained agent. This evaluates the capacity of the agent to perform effectively on entirely unseen physical configurations, representing a core machine learning challenge that correlates theoretically with robust real world deployment under dynamic physical conditions.
+Current timeline and milestones 
+The team has created timelines to give an understanding of where progress should lie throughout the courses of Senior Design I and Senior Design II which takes place in the Fall of 2026 to the Spring of 2027. As the development teams are split until machine learning and embedded teams, there are parallel goals including integration milestones between the two teams. During Senior Design I the guidance was given that the team should produce a basic product and then during Senior Design II that product will be actually refined into a useful project deliverable. With that in mind the first semester goals are around establishing the simulation, training pipeline, building the first physical robot, and the first parts of integration between the two teams. The second semester is where the integration will be fully complete into one system, there will be full evaluation testing on the robots performance, and preparing for presenting this product. The first semester also involves heavy research and the second semester will focus on implementing that research into the project. 
+The schedule below is target dates laid out for the team but not concrete to account for unexpected roadblocks or quicker development timelines than anticipated. The team meets weekly to check in on these milestones and completes work in two week sprints. Additionally, these are larger goals while the team uses Jira tickets for individual team member tasks. 
+
+
+Senior Design I (September 18th-December 1st)
+
+
+Sprint
+	Sprint Goals
+	ML team goal
+	Embedded team goal
+	Decision
+	9/18-10/2
+	Establish a baseline
+	Define the data and evaluation benchmark; begin data analysis
+	Finish chassis design and obtain parts
+	Agree on the robot capabilities and measurements both teams will use
+	10/2-10/16
+	Build working systems
+	Prepare datasets and a training approach; begin pretraining
+	Assemble a self-balancing robot using the reference GitHub firmware
+	Demonstrate that the physical robot works before adding the ML model
+	10/16-10/30
+	Check model performance
+	Evaluate the pretrained model; fine-tune if results call for it
+	Adapt firmware to match the simulation setup
+	Decide whether the model is ready for deployment
+	10/30-11/13
+	Integrate and test
+	Prepare the model for deployment and run regression tests
+	Deploy it on the robot and resolve mechanical issues
+	Integration planning/progress review
+	11/13-11/27
+	Buffer Sprint/Documentation 
+	Extra time if needed
+	Extra time if needed
+	Semester report is ready for turn in 
+	Senior Design II (January 11th-May 4th)
+
+
+Sprint
+	Sprint Goals
+	ML team goal
+	Embedded team goal
+	Decision
+	1/11–1/25
+	Review and refine systems
+	Review fall results and update the simulation using confirmed robot measurements
+	Resolve remaining hardware issues and verify sensor and motor behavior
+	Agree on remaining work and confirm MVP acceptance criteria
+	1/25–2/8
+	Improve model performance
+	Complete pretraining and evaluate the model against the benchmark
+	Finalize firmware observations, motor commands, and timing to match simulation
+	Decide whether additional fine-tuning is needed
+	2/8–2/22
+	Strengthen model and prepare integration
+	Fine-tune if needed and compare results with the baseline
+	Verify sensor preprocessing, control-loop timing, and telemetry
+	Select the model for deployment
+	2/22–3/8
+	Deploy and test
+	Quantize the model using TensorFlow Lite and run regression tests
+	Deploy the model onto the robot and resolve integration issues        
+	Confirm the deployed model meets the agreed MVP criteria
+	3/8–3/22
+	Integration buffer week/ Spring break
+	Resolve remaining model conversion or deployment issues before break
+	Resolve remaining firmware or mechanical issues before break
+	Confirm readiness for final evaluation
+	3/22–4/5
+	Evaluate sim-to-real performance
+	Freeze model weights and compare simulation results with physical results
+	Conduct controlled physical trials and collect performance logs
+	Determine whether project objectives were met and document limitations
+
+
+	4/5–4/19
+	Finalize project and documentation
+	Complete evaluation analysis and model reproduction instructions
+	Finalize CAD, firmware, wiring, and assembly documentation
+	Confirm the system and report are ready for the final demonstration
+	TBD for presentation Date
+	SD2 Presentation 
+	
+
+	
+
+	
+
+	
+
+The actual date for the Spring of 2027 course deliverables are not announced yet so the above timeline is an estimate and will be refined once the actual deliverables, and presentation dates are confirmed. Right now it is based on the posted academic calendar for the University of Central Florida’s Spring semester. Dates for the sprints are subject to change. 
+
+
+
+
+
+
+Project Diagrams
+System Pipeline Diagram
+  
+
+Figure 14 ZSB system pipeline connecting mechanical design, simulation, model training, evaluation, and physical deployment.
+Use Case Diagram
+  
+
+Figure 15 ZSB  use case diagram showing interactions between the system, roboticist, controls engineer, and external developer.
+
+
+Entity Relationship Diagram
+Zero-Shot Balancer does not contain a database of any form, therefore there is no Entity Relationship diagram required.
+
+
+Current backlog, Sprint backlog, and Epics
+Current Sprint: 
+  
+
+
+
+Sprint Backlog: 
+  
+
+Jira Epics: 
+  
+
+References 
+[CAD History] the team. Chassis design and document history. Onshape. https://cad.onshape.com/documents/edd3def9f947e1f0cb225777/w/edbb94034c7a4724509c8e42/e/55cf8d7d3dffa94315d623f2
+
+
+[Mass Workbook] Team A23 project files. Robot Mass and Centers.xlsx, Part Weights worksheet. Senior Design/Robot Mass Viewer.
+
+
+[Onshape Mesh Guide] Onshape Help. Working with Imported CAD: https://cad.onshape.com/help/Content/Document/working_with_imported_cad.htm ; Mixed Modeling: https://cad.onshape.com/help/Content/PartStudio/mixed_modeling.htm
+
+
+[CAD Export Notes] Team A23 project files. CAD Export Notes.txt and cad-export-check.json. Senior Design/Robot Mass Viewer.
+
+
+[Core Files] Team A23. ZeroShotBalancer robot and world models. Files: base_world_env.xml, robot-02.xml, base_world_calibrated.xml, and robot_calibrated.xml under src/machine_learning/training/robot_environments. https://github.com/Adammouedden/ZeroShotBalancer
+
+
+[Environment Files] Team A23. ZeroShotBalancer environment implementation. Files: training/robot_environments/ControlAgentBaseEnv.py and training/pre_training/control_agent/envs/control_agent_training_environment.py, with environment registration in envs/__init__.py. Paths are relative to src/machine_learning in [Core Files].
+
+
+[Training Script] Team A23. ZeroShotBalancer training workflow. File: src/machine_learning/training/pre_training/control_agent/sb_rl.py. Repository in [Core Files].
+
+
+[Tests] Team A23. ZeroShotBalancer observation and action tests. Files: test_env_observations.py, test_env_actions.py, and conftest.py under src/machine_learning/tests/robot_environments; supporting notes in docs/unit_tests.md. Verification record: October 25, 2026, 94 tests passed. Repository in [Core Files].
+
+
+[Experiment Records] Team A23. ZeroShotBalancer evaluation and experiment records. Directories: src/machine_learning/evaluation, experiments/STR-99, and training/reference_baseline; the latter two are also under src/machine_learning. Repository in [Core Files].
+
+
+[MuJoCo Docs] Google DeepMind. MuJoCo Documentation: Overview. https://mujoco.readthedocs.io/en/stable/overview.html
+
+
+[Gymnasium Docs] Farama Foundation. Gymnasium Documentation: Environment API. https://gymnasium.farama.org/api/env/
+
+
+[MuJoCo XML Docs] Google DeepMind. MuJoCo Documentation: XML Reference, compiler and contact settings. https://mujoco.readthedocs.io/en/stable/XMLreference.html
+
+
+[MuJoCo Modeling Docs] Google DeepMind. MuJoCo Documentation: Modeling, actuators. https://mujoco.readthedocs.io/en/stable/modeling.html#actuators
+
+
+[Gymnasium Wrappers Docs] Farama Foundation. Gymnasium Documentation: Observation Wrappers, NormalizeObservation. https://gymnasium.farama.org/api/wrappers/observation_wrappers/
+
+
+[IBM RL] IBM. What is reinforcement learning? IBM Think. https://www.ibm.com/think/topics/reinforcement-learning
+ 
+[PPO Paper] J. Schulman, F. Wolski, P. Dhariwal, A. Radford, and O. Klimov, "Proximal Policy Optimization Algorithms," arXiv:1707.06347, 2017. https://arxiv.org/abs/1707.06347
+ 
+[Reference Repo] L. Hurst. balance-robot-mujoco-rl. GitHub repository, MIT License. https://github.com/lachlanhurst/balance-robot-mujoco-rl
+
+
+[SB3 Paper] A. Raffin, A. Hill, A. Gleave, A. Kanervisto, M. Ernestus, and N. Dormann, "Stable-Baselines3: Reliable Reinforcement Learning Implementations," Journal of Machine Learning Research, vol. 22, no. 268, pp. 1–8, 2021. https://jmlr.org/papers/v22/20-1364.html
+
+
+[Learning Agile Robotic Locomotion Skills by Imitating Animals] X. B. Peng, E. Coumans, T. Zhang, T.-W. E. Lee, J. Tan, and S. Levine, “Learning agile robotic locomotion skills by imitating animals,” in Robotics: Science and Systems (RSS), 2020, doi: 10.15607/RSS.2020.XVI.064.
+[Learning to walk in minutes using massively parallel deep reinforcement learning] N. Rudin, D. Hoeller, P. Reist, and M. Hutter, “Learning to walk in minutes using massively parallel deep reinforcement learning,” in Proc. 5th Conf. Robot Learning (CoRL), vol. 164, pp. 91–100, 2022.
