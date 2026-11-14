@@ -9,3 +9,4 @@ The repository is split into two src code directories:
 ## Documentation
 
 - [Unit tests](/docs/unit_tests.md): observation and action test cases, scope, and instructions for running pytest.
+- [Continuous integration](docs/ci.md): workflow configuration, maintenance, and local reproduction.
