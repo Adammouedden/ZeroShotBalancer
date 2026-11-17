@@ -362,3 +362,43 @@ def test_obs_labels_match_observation_order(env, monkeypatch, label, expected_va
         f"OBS_LABELS is out of sync with _get_obs(): {label} is labelling the wrong "
         f"position. Labels are {OBS_LABELS}, observation is {env._get_obs()}"
     )
+
+
+@pytest.mark.parametrize("sign", [1, -1], ids=["q", "negated-q"])
+@pytest.mark.parametrize("direction", [1, -1], ids=["positive", "negative"])
+def test_pitch_zero_quaternion_x_can_have_nonzero_euler_x(env, sign, direction):
+    # Unit quaternion with xyz Euler angles (direction*45, direction*45, 90).
+    # Assign the derived body orientation directly to exercise an EXACT zero x;
+    # a quaternion round-trip through the simulator can introduce roundoff.
+    env.data.body("robot_body").xquat[:] = sign * np.array(
+        [np.sqrt(0.5), 0.0, direction * 0.5, 0.5]
+    )
+    assert env.get_pitch() == pytest.approx(direction * np.pi / 4)
+    assert env._get_obs()[0] == pytest.approx(direction * np.pi / 4 / PITCH_MAX)
+
+
+@pytest.mark.parametrize("angles", [(20, 15, 60), (-25, -10, -80), (0, 30, 45)])
+def test_combined_orientation_reaches_pitch_and_yaw_observations(env, angles):
+    from scipy.spatial.transform import Rotation
+
+    qpos = env.init_qpos.copy()
+    qpos[3:7] = Rotation.from_euler("xyz", angles, degrees=True).as_quat(scalar_first=True)
+    env.set_state(qpos, np.zeros_like(env.data.qvel))
+    env.target_yaw = 0.0
+    expected_pitch, _, expected_yaw = np.deg2rad(angles)
+    # Expectations come from the specified angles, not inverse conversion in the test.
+    assert env.get_pitch() == pytest.approx(expected_pitch, abs=1e-8)
+    assert env.get_yaw() == pytest.approx(expected_yaw, abs=1e-8)
+    obs = env._get_obs()
+    assert obs.shape == (6,)
+    assert obs.dtype == np.float32
+    assert np.all(np.isfinite(obs))
+    assert obs[0] == pytest.approx(expected_pitch / PITCH_MAX, abs=1e-7)
+    assert obs[5] == pytest.approx(-expected_yaw, abs=1e-7)
+
+
+def test_reset_zero_rotation_uses_mujoco_scalar_first_quaternion(env, monkeypatch):
+    # All three sampled Euler angles become zero: the intended rotation is identity.
+    monkeypatch.setattr(np.random, "random", lambda: 0.5)
+    env.reset_model()
+    np.testing.assert_allclose(env.data.qpos[3:7], [1, 0, 0, 0], atol=1e-12)

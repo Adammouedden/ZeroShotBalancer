@@ -17,3 +17,5 @@ uv run python tests/run_tests.py --test-actions -- -v          # Verbose pytest 
 Pass pytest options after `--`; they apply to each pytest process. `-v` and `--verbose` enable verbose output, `-vv` adds more detail, and `-x` stops each process after its first failure. Combine them with `uv run python tests/run_tests.py --test-actions -- -v -x`. Use `uv run python tests/run_tests.py --help` for runner options.
 
 For setup instructions, see the [developer quickstart](/docs/developer_guide/README.md#developer-quickstart). For test cases and scope, see the [unit test guide](/docs/unit_tests.md).
+
+For the full CI checks and headless rendering setup, see [Continuous integration](/docs/ci.md).
