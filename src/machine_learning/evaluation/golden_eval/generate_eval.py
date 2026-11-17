@@ -39,6 +39,12 @@ def generate(size, max_acceleration, total_time, max_speed, seed):
 
         Target Yaw Generation:
     '''
+    top_left = (-1 * (size ** 0.5)/2, (size ** 0.5)/2)
+    top_right = ((size ** 0.5)/2, (size ** 0.5)/2)
+    bottom_left = (-1 * (size ** 0.5)/2, -1 * (size ** 0.5)/2)
+    bottom_right = ((size ** 0.5)/2, -1 * (size ** 0.5)/2)
+
+
     random.seed(seed)
     total_time_counter = 0
     prev_sample = [0, 0, 0]
@@ -62,6 +68,7 @@ def generate(size, max_acceleration, total_time, max_speed, seed):
         #print(f"Time: {total_time_counter}, Speed: {speed}, Direction: {direction}")
         sample = [total_time_counter, speed, direction]
         print(sample)
+
         prev_sample = sample
 
 
