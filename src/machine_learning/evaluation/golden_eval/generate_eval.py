@@ -44,25 +44,25 @@ def generate(size, max_acceleration, total_time, max_speed, seed):
     prev_sample = [0, 0, 0]
     while total_time >= total_time_counter:
         
-        for i in range(2):
-            prev_time = prev_sample[0]
-            prev_speed = prev_sample[1]
-            prev_direction = prev_sample[2]
-            
-            time = random.randint(1, 6) * 0.5 # seconds between 0.5 and 3 seconds
-            total_time_counter += time + prev_time
-            delta_time = time - prev_time
-            
-            speed = random.uniform(-1 * max_speed, max_speed) # rads per second
-            delta_speed = speed - prev_speed
-            
-            
-            direction = random.uniform(-1 * 180, 180) # degrees
-            delta_direction = (direction - prev_direction + 180) % 360 - 180 # keep it between -180 and 180
-            
-            #print(f"Time: {total_time_counter}, Speed: {speed}, Direction: {direction}")
-            sample = [total_time_counter, speed, direction]
-            print(sample)
+        prev_time = prev_sample[0]
+        prev_speed = prev_sample[1]
+        prev_direction = prev_sample[2]
+        
+        time = random.randint(1, 6) * 0.5 # seconds between 0.5 and 3 seconds
+        total_time_counter += time
+        delta_time = time - prev_time
+        
+        speed = random.uniform(-1 * max_speed, max_speed) # rads per second
+        delta_speed = speed - prev_speed
+        
+        
+        direction = random.uniform(-1 * 180, 180) # degrees
+        delta_direction = (direction - prev_direction + 180) % 360 - 180 # keep it between -180 and 180
+        
+        #print(f"Time: {total_time_counter}, Speed: {speed}, Direction: {direction}")
+        sample = [total_time_counter, speed, direction]
+        print(sample)
+        prev_sample = sample
 
 
 size = 25 # 5x5 meters
