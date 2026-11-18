@@ -1,118 +1,115 @@
 '''
 Generate an evaluation schedule for ZSB in the form of [start time s, target wheel speed, target yaw]
+
+    
+
+        
+ACTUATOR MODELING NOTES:
+    From robot_calibrated.xml:
+        Speed range: ±20.6 rad/s, approximately ±197 RPM, from 0.115 N·m
+
+    For 12V / 330 RPM JGB37-520 motors with the 65 mm wheels:
+        Motor max is 330 RPM, approximately 34.5 rad/s
+        Maximum no-load speed: ~1.12 m/s
+        Max torque estimation: 0.128 N·m
+        
+    Under load, at current 0.95 kg:
+        Cruising speed 28.27 rad/s (~0.92 m/s)
+        Real world acceleration 4.5 - 5.0 m/s^2
+        Time to 95% Top Speed: ~0.35 to 0.45 s
+        Distance to reach top speed: ~20 to 25 cm
 '''
 
 import click
 import random
 import math
 
-@click.option('-s', '--size', help="Type in the maximum area of the testing boundary in meters squared", default=4)
-@click.option('-a', '--max-acceleration', help="Actuator Modeling: maximum acceleration for our acquired motor", default=1)
+#@click.command()
+@click.option('-a', '--area', help="Type in the maximum area of the testing boundary in meters squared", default=4)
+@click.option('-ms', '--max-speed', help="Actuator Modeling: maximum speed for our acquired motor", default=1)
 @click.option('-t', '--total-time', help="Total time (in seconds) for evaluation", default=60)
-def generate(size, max_acceleration, total_time, max_speed, seed, boundary_threshold=1):
-    '''
-    
-        Accept all parameters
-        
-        Target Speed Generation:
-            Use the parameters to compute a normal distribution of possible values for target speed
-            
-            [start time s1, target wheel speed, target yaw]  s2 - s1 long
-            [start time s2, target wheel speed, target yaw] 
-            
-            acceleration = (target wheel speed_1 - target_wheel_speed_2) / s2-s1
-            
-            
-            From robot_calibrated.xml:
-                Speed range: ±20.6 rad/s, approximately ±197 RPM, from 0.115 N·m
-            
-            For 12V / 330 RPM JGB37-520 motors with the 65 mm wheels:
-                Motor max is 330 RPM, approximately 34.5 rad/s
-                Maximum no-load speed: ~1.12 m/s
-                Max torque estimation: 0.128 N·m
-                
-            Under load, at current 0.95 kg:
-                Cruising speed 28.27 rad/s (~0.92 m/s)
-                Real world acceleration 4.5 - 5.0 m/s^2
-                Time to 95% Top Speed: ~0.35 to 0.45 s
-                Distance to reach top speed: ~20 to 25 cm
-
-
-        Target Yaw Generation:
-    '''
-
-
+def varying_time_generator(area, total_time, max_speed, seed, boundary_threshold=0):
 
     random.seed(seed)
-    total_time_counter = 0
-    positions = []
-    prev_sample = [0, 0, 0]
-    schedule = [prev_sample]
+    
+    MAX_DISTANCE = (math.sqrt(area) / 2) - boundary_threshold
+    MINIMUM_DISTANCE_FACTOR = 0.10
+    TIME_GENEROSITY_FACTOR = 1.10
+    SETTLE_TIME = 20
+    total_time_counter = SETTLE_TIME
+    
+    x_position, y_position = 0, 0
+
+    schedule = [[0, 0, 0]]
     
     while total_time >= total_time_counter:
         
-        time, speed, direction = prev_sample[0], prev_sample[1], prev_sample[2]
+        # Sampling distance and time
+        distance_sample = random.uniform(MINIMUM_DISTANCE_FACTOR * MAX_DISTANCE, MAX_DISTANCE) 
+        maximum_time_for_distance = (MAX_DISTANCE / max_speed) * TIME_GENEROSITY_FACTOR # t = d/v, ensure that we never sample a time that would make traversing this distance impossible
+        minimum_time_for_distance = (distance_sample / max_speed) * TIME_GENEROSITY_FACTOR # We can give more than the exact amount of time it takes to travel distance_sample meters
+    
+        time = random.uniform(minimum_time_for_distance, maximum_time_for_distance)
         
-        distance_traveled_vector = speed * time # v = d/t -> d = v*t
-        x_component_of_distance_traveled_vector = math.cos(direction) * distance_traveled_vector
-        y_component_of_distance_traveled_vector = math.sin(direction) * distance_traveled_vector
-        positions.append((x_component_of_distance_traveled_vector, y_component_of_distance_traveled_vector))
+        # Computing speed and constraint sampling direction
+        speed = distance_sample / time
         
-        x_component_of_current_distance_traveled = 0
-        y_component_of_current_distance_traveled = 0
+        # x component
+        distance_to_right_wall = MAX_DISTANCE - x_position
+        distance_to_left_wall = x_position - -1 * MAX_DISTANCE
         
-        for i in range(len(positions)):
-            x_component_of_current_distance_traveled += positions[i][0]
-            y_component_of_current_distance_traveled += positions[i][1]
-            
-        distance_constraints = check_boundary(x_component_of_current_distance_traveled, y_component_of_current_distance_traveled, size)
-        for d in distance_constraints:
-            if d > threshold:
-                
+        if distance_to_right_wall < distance_sample: # Near the right wall so move left
+            sign_x = -1
+        elif distance_to_left_wall < distance_sample: # Near the left wall, so move right
+            sign_x = 1
+        else:
+            sign_x = random.choice((-1, 1)) # Nearing neither left or right wall, so randomly choose direction
         
-                
+        # y component
+        distance_to_top_wall = MAX_DISTANCE - y_position
+        distance_to_bottom_wall = y_position - -1 * MAX_DISTANCE  
         
-        # Sampling
-        time = random.randint(1, 6) * 0.5 # seconds between 0.5 and 3 seconds
-        speed = random.uniform(-1 * max_speed, max_speed) # rads per second
-        direction = random.uniform(-1 * 180, 180) # degrees    
+        if distance_to_top_wall < distance_sample: # Near the top wall, so move down
+            sign_y = -1
+        elif distance_to_bottom_wall < distance_sample: # Near the bottom wall, so move up
+            sign_y = 1
+        else:
+            sign_y = random.choice((-1, 1)) # Nearing neither top or bottom wall, so randomly choose direction
         
-        #print(f"Time: {total_time_counter}, Speed: {speed}, Direction: {direction}")
+        quadrant_angle = random.uniform(0, math.pi / 2)
+        x_component_direction = sign_x * math.cos(quadrant_angle)
+        y_component_direction = sign_y * math.sin(quadrant_angle)
+        
+        direction = math.atan2(y_component_direction, x_component_direction)
+        direction *= (180 / math.pi)
+        
+        #Update position
+        x_position += distance_sample * x_component_direction # x coordinate of position
+        y_position += distance_sample * y_component_direction # y coordinate of position
+        
+        assert abs(x_position) <= MAX_DISTANCE and abs(y_position) <= MAX_DISTANCE
+        
+        #Final generated sample
         sample = [total_time_counter, speed, direction]
-        total_time_counter += time
         schedule.append(sample)
         
-        prev_sample = sample
-
-
-    print(schedule)
-
-def check_boundary(x, y, area):
-    max_x = math.sqrt(area) / 2
-    min_x = -1 * max_x
-    max_y = max_x
-    min_y = min_x
-    
-    x_distance_to_right_boundary = abs(max_x - x)
-    x_distance_to_left_boundary = abs(min_x - x)
-    
-    y_distance_to_top_boundary = abs(max_y - y)
-    y_distance_to_bottom_boundary = abs(min_y - y)
-    
-    generation_constraints = []
-    for distance in (x_distance_to_right_boundary, x_distance_to_left_boundary, y_distance_to_top_boundary, y_distance_to_bottom_boundary):
-        generation_constraints.append(distance)
-    
-    return generation_constraints
+        #Update time counter
+        total_time_counter += time
         
+        #print(sample)
+        
+
+    schedule.append([total_time, 0, direction])
+    return schedule
+
 
 
 if __name__ == "__main__":
-    size = 25 # 5x5 meters
-    max_acceleration = 5 # m/s^2
+    size = 25 # 5x5 meters example
     total_time = 60 #seconds
-    max_speed = 28 # rads/sec
+    max_speed = 1 # 1 m/s comes from actuator modeling
     seed = 0
+    threshold = 0 # in meters
 
-
-    generate(size, max_acceleration, total_time, max_speed, seed)
+    schedule = varying_time_generator(area=size, total_time=total_time, max_speed=max_speed, seed=seed, boundary_threshold=threshold)
+    print(*schedule, sep="\n")
