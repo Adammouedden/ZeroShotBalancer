@@ -23,6 +23,7 @@ ACTUATOR MODELING NOTES:
 import click
 import random
 import math
+import json
 
 #@click.command()
 @click.option('-a', '--area', help="Type in the maximum area of the testing boundary in meters squared", default=4)
@@ -90,16 +91,14 @@ def varying_time_generator(area, total_time, max_speed, seed, boundary_threshold
         assert abs(x_position) <= MAX_DISTANCE and abs(y_position) <= MAX_DISTANCE
         
         #Final generated sample
-        sample = [total_time_counter, speed, direction]
+        sample = [round(total_time_counter, 3), round(speed, 3), round(direction, 3)]
         schedule.append(sample)
         
         #Update time counter
         total_time_counter += time
-        
-        #print(sample)
-        
+                
 
-    schedule.append([total_time, 0, direction])
+    schedule.append([total_time, 0, round(direction, 3)])
     return schedule
 
 
@@ -113,3 +112,6 @@ if __name__ == "__main__":
 
     schedule = varying_time_generator(area=size, total_time=total_time, max_speed=max_speed, seed=seed, boundary_threshold=threshold)
     print(*schedule, sep="\n")
+    
+    with open("schedules/test.json", "w", encoding="utf-8") as f:
+        f.write("[\n" + ",\n".join(json.dumps(row) for row in schedule) + "\n]")
