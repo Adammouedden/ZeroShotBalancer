@@ -4,11 +4,12 @@ Generate an evaluation schedule for ZSB in the form of [start time s, target whe
 
 import click
 import random
+import math
 
 @click.option('-s', '--size', help="Type in the maximum area of the testing boundary in meters squared", default=4)
 @click.option('-a', '--max-acceleration', help="Actuator Modeling: maximum acceleration for our acquired motor", default=1)
 @click.option('-t', '--total-time', help="Total time (in seconds) for evaluation", default=60)
-def generate(size, max_acceleration, total_time, max_speed, seed):
+def generate(size, max_acceleration, total_time, max_speed, seed, boundary_threshold=1):
     '''
     
         Accept all parameters
@@ -39,44 +40,79 @@ def generate(size, max_acceleration, total_time, max_speed, seed):
 
         Target Yaw Generation:
     '''
-    top_left = (-1 * (size ** 0.5)/2, (size ** 0.5)/2)
-    top_right = ((size ** 0.5)/2, (size ** 0.5)/2)
-    bottom_left = (-1 * (size ** 0.5)/2, -1 * (size ** 0.5)/2)
-    bottom_right = ((size ** 0.5)/2, -1 * (size ** 0.5)/2)
+
 
 
     random.seed(seed)
     total_time_counter = 0
+    positions = []
     prev_sample = [0, 0, 0]
+    schedule = [prev_sample]
+    
     while total_time >= total_time_counter:
         
-        prev_time = prev_sample[0]
-        prev_speed = prev_sample[1]
-        prev_direction = prev_sample[2]
+        time, speed, direction = prev_sample[0], prev_sample[1], prev_sample[2]
         
+        distance_traveled_vector = speed * time # v = d/t -> d = v*t
+        x_component_of_distance_traveled_vector = math.cos(direction) * distance_traveled_vector
+        y_component_of_distance_traveled_vector = math.sin(direction) * distance_traveled_vector
+        positions.append((x_component_of_distance_traveled_vector, y_component_of_distance_traveled_vector))
+        
+        x_component_of_current_distance_traveled = 0
+        y_component_of_current_distance_traveled = 0
+        
+        for i in range(len(positions)):
+            x_component_of_current_distance_traveled += positions[i][0]
+            y_component_of_current_distance_traveled += positions[i][1]
+            
+        distance_constraints = check_boundary(x_component_of_current_distance_traveled, y_component_of_current_distance_traveled, size)
+        for d in distance_constraints:
+            if d > threshold:
+                
+        
+                
+        
+        # Sampling
         time = random.randint(1, 6) * 0.5 # seconds between 0.5 and 3 seconds
-        total_time_counter += time
-        delta_time = time - prev_time
-        
         speed = random.uniform(-1 * max_speed, max_speed) # rads per second
-        delta_speed = speed - prev_speed
-        
-        
-        direction = random.uniform(-1 * 180, 180) # degrees
-        delta_direction = (direction - prev_direction + 180) % 360 - 180 # keep it between -180 and 180
+        direction = random.uniform(-1 * 180, 180) # degrees    
         
         #print(f"Time: {total_time_counter}, Speed: {speed}, Direction: {direction}")
         sample = [total_time_counter, speed, direction]
-        print(sample)
-
+        total_time_counter += time
+        schedule.append(sample)
+        
         prev_sample = sample
 
 
-size = 25 # 5x5 meters
-max_acceleration = 5 # m/s^2
-total_time = 60 #seconds
-max_speed = 28 # rads/sec
-seed = 0
+    print(schedule)
+
+def check_boundary(x, y, area):
+    max_x = math.sqrt(area) / 2
+    min_x = -1 * max_x
+    max_y = max_x
+    min_y = min_x
+    
+    x_distance_to_right_boundary = abs(max_x - x)
+    x_distance_to_left_boundary = abs(min_x - x)
+    
+    y_distance_to_top_boundary = abs(max_y - y)
+    y_distance_to_bottom_boundary = abs(min_y - y)
+    
+    generation_constraints = []
+    for distance in (x_distance_to_right_boundary, x_distance_to_left_boundary, y_distance_to_top_boundary, y_distance_to_bottom_boundary):
+        generation_constraints.append(distance)
+    
+    return generation_constraints
+        
 
 
-generate(size, max_acceleration, total_time, max_speed, seed)
+if __name__ == "__main__":
+    size = 25 # 5x5 meters
+    max_acceleration = 5 # m/s^2
+    total_time = 60 #seconds
+    max_speed = 28 # rads/sec
+    seed = 0
+
+
+    generate(size, max_acceleration, total_time, max_speed, seed)
