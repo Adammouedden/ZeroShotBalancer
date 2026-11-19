@@ -1,6 +1,14 @@
 '''
 Generate an evaluation schedule for ZSB in the form of [start time s, target wheel speed, target yaw]
 
+TO DO:
+
+    1. Fix the problem related to m/s speed instructions and rad/s robot instructions
+    2. Yaw is in degrees as well, but robot accepts rad/s
+    3. Negative speeds are never used, resolve this
+    4. The last sample is truncated, set the final one with respect to the prior
+    5. Heading is resampled independently, so there are many near instantaenous 180 degree reversals
+    6. MAX_distance is relative to (0, 0), we can make this dynamic to the agent's current position
     
 
         
@@ -36,7 +44,7 @@ def varying_time_generator(area, total_time, max_speed, seed, boundary_threshold
     MAX_DISTANCE = (math.sqrt(area) / 2) - boundary_threshold
     MINIMUM_DISTANCE_FACTOR = 0.10
     TIME_GENEROSITY_FACTOR = 1.10
-    SETTLE_TIME = 20
+    SETTLE_TIME = 2
     total_time_counter = SETTLE_TIME
     
     x_position, y_position = 0, 0
@@ -47,6 +55,7 @@ def varying_time_generator(area, total_time, max_speed, seed, boundary_threshold
         
         # Sampling distance and time
         distance_sample = random.uniform(MINIMUM_DISTANCE_FACTOR * MAX_DISTANCE, MAX_DISTANCE) 
+
         maximum_time_for_distance = (MAX_DISTANCE / max_speed) * TIME_GENEROSITY_FACTOR # t = d/v, ensure that we never sample a time that would make traversing this distance impossible
         minimum_time_for_distance = (distance_sample / max_speed) * TIME_GENEROSITY_FACTOR # We can give more than the exact amount of time it takes to travel distance_sample meters
     
@@ -113,5 +122,5 @@ if __name__ == "__main__":
     schedule = varying_time_generator(area=size, total_time=total_time, max_speed=max_speed, seed=seed, boundary_threshold=threshold)
     print(*schedule, sep="\n")
     
-    with open("schedules/test.json", "w", encoding="utf-8") as f:
+    with open("src/machine_learning/evaluation/golden_eval/schedules/test.json", "w", encoding="utf-8") as f:
         f.write("[\n" + ",\n".join(json.dumps(row) for row in schedule) + "\n]")
