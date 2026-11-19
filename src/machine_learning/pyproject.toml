@@ -38,5 +38,6 @@ packages = ["training/visibility", "training/robot_environments", "utilities"]
 
 [dependency-groups]
 dev = [
+    "matplotlib>=3.11.2",
     "pytest>=9.1.1",
 ]

@@ -148,6 +148,119 @@
                     "total_reward": -1480.0349567990659
                 }
             }
+        },
+        {
+            "started": "2026-11-19T01:39:11-05:00",
+            "command": "compare",
+            "schedule": "src/machine_learning/evaluation/golden_eval/schedules/test.json",
+            "seed": 0,
+            "output": "/home/adamant/PROJECTS/ZeroShotBalancer/src/machine_learning/experiments/STR-117/evaluation/comparison/test",
+            "results": {
+                "model_a": {
+                    "model": "/home/adamant/PROJECTS/ZeroShotBalancer/src/machine_learning/training/reference_baseline/models/calibrated_run2/ReferenceBaselineTrainingEnv_PPO/best_model.zip",
+                    "env": "ReferenceBaselineTrainingEnv",
+                    "xml_file": "base_world_calibrated.xml",
+                    "observation_normalization": "none",
+                    "duration_s": 64.694,
+                    "reset_grace_s": 1.0,
+                    "falls": 0,
+                    "mean_speed_error": 18.368457690836763,
+                    "mean_yaw_error": 2.756044707870335,
+                    "mean_abs_pitch_deg": 1.2507817973724795,
+                    "max_reward": 0.738323405780024,
+                    "total_reward": 8050.914454425272
+                },
+                "model_b": {
+                    "model": "/home/adamant/PROJECTS/ZeroShotBalancer/src/machine_learning/experiments/STR-118/training/models/ControlAgentTrainingEnv_PPO/best_model.zip",
+                    "env": "ControlAgentTrainingEnv",
+                    "xml_file": "base_world_calibrated.xml",
+                    "observation_normalization": "checkpoint",
+                    "duration_s": 64.694,
+                    "reset_grace_s": 1.0,
+                    "falls": 188,
+                    "mean_speed_error": 10.515930001374064,
+                    "mean_yaw_error": 0.55132504040016,
+                    "mean_abs_pitch_deg": 7.953297684434354,
+                    "max_reward": 3.223698437219844,
+                    "total_reward": 6810.105753594263
+                }
+            }
+        },
+        {
+            "started": "2026-11-19T01:51:16-05:00",
+            "command": "compare",
+            "schedule": "src/machine_learning/evaluation/golden_eval/schedules/pure_balancing.json",
+            "seed": 0,
+            "output": "/home/adamant/PROJECTS/ZeroShotBalancer/src/machine_learning/experiments/STR-117/evaluation/comparison/pure_balancing",
+            "results": {
+                "model_a": {
+                    "model": "/home/adamant/PROJECTS/ZeroShotBalancer/src/machine_learning/training/reference_baseline/models/calibrated_run2/ReferenceBaselineTrainingEnv_PPO/best_model.zip",
+                    "env": "ReferenceBaselineTrainingEnv",
+                    "xml_file": "base_world_calibrated.xml",
+                    "observation_normalization": "none",
+                    "duration_s": 62.0,
+                    "reset_grace_s": 1.0,
+                    "falls": 0,
+                    "mean_speed_error": 7.309175957588773,
+                    "mean_yaw_error": 2.2259282375879206,
+                    "mean_abs_pitch_deg": 1.1844077749501363,
+                    "max_reward": 0.5987483287883001,
+                    "total_reward": 6894.140695892255
+                },
+                "model_b": {
+                    "model": "/home/adamant/PROJECTS/ZeroShotBalancer/src/machine_learning/experiments/STR-118/training/models/ControlAgentTrainingEnv_PPO/best_model.zip",
+                    "env": "ControlAgentTrainingEnv",
+                    "xml_file": "base_world_calibrated.xml",
+                    "observation_normalization": "checkpoint",
+                    "duration_s": 62.0,
+                    "reset_grace_s": 1.0,
+                    "falls": 0,
+                    "mean_speed_error": 0.44779793854912486,
+                    "mean_yaw_error": 0.09292614436280851,
+                    "mean_abs_pitch_deg": 1.1557527971384605,
+                    "max_reward": 0.5911461100567428,
+                    "total_reward": 7230.392813774137
+                }
+            }
+        },
+        {
+            "started": "2026-11-19T02:14:16-05:00",
+            "command": "compare",
+            "schedule": "src/machine_learning/evaluation/golden_eval/schedules/test.json",
+            "seed": 0,
+            "output": "/home/adamant/PROJECTS/ZeroShotBalancer/src/machine_learning/experiments/STR-117/evaluation/comparison/test",
+            "results": {
+                "model_a": {
+                    "model": "/home/adamant/PROJECTS/ZeroShotBalancer/src/machine_learning/training/reference_baseline/models/calibrated_run2/ReferenceBaselineTrainingEnv_PPO/best_model.zip",
+                    "env": "ReferenceBaselineTrainingEnv",
+                    "xml_file": "base_world_calibrated.xml",
+                    "observation_normalization": "none",
+                    "duration_s": 64.694,
+                    "reset_grace_s": 1.0,
+                    "falls": 0,
+                    "discarded_spawns": 0,
+                    "mean_speed_error": 18.368457690836763,
+                    "mean_yaw_error": 2.756044707870335,
+                    "mean_abs_pitch_deg": 1.2507817973724795,
+                    "max_reward": 0.738323405780024,
+                    "total_reward": 8050.914454425272
+                },
+                "model_b": {
+                    "model": "/home/adamant/PROJECTS/ZeroShotBalancer/src/machine_learning/experiments/STR-118/training/models/ControlAgentTrainingEnv_PPO/best_model.zip",
+                    "env": "ControlAgentTrainingEnv",
+                    "xml_file": "base_world_calibrated.xml",
+                    "observation_normalization": "checkpoint",
+                    "duration_s": 64.694,
+                    "reset_grace_s": 1.0,
+                    "falls": 17,
+                    "discarded_spawns": 280,
+                    "mean_speed_error": 11.46662774773792,
+                    "mean_yaw_error": 0.5949137895998184,
+                    "mean_abs_pitch_deg": 3.817229298179502,
+                    "max_reward": 3.208058366554462,
+                    "total_reward": 6938.721941645213
+                }
+            }
         }
     ]
 }

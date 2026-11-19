@@ -3,10 +3,10 @@ Generate an evaluation schedule for ZSB in the form of [start time s, target whe
 
 TO DO:
 
-    1. Fix the problem related to m/s speed instructions and rad/s robot instructions
-    2. Yaw is in degrees as well, but robot accepts rad/s
+    1. Fix the problem related to m/s speed instructions and rad/s robot instructions | HANDLED
+    2. Yaw is in degrees as well, but robot accepts rad/s | HANDLED
     3. Negative speeds are never used, resolve this
-    4. The last sample is truncated, set the final one with respect to the prior
+    4. The last sample is truncated, set the final one with respect to the prior | HANDLED
     5. Heading is resampled independently, so there are many near instantaenous 180 degree reversals
     6. MAX_distance is relative to (0, 0), we can make this dynamic to the agent's current position
     
@@ -37,7 +37,10 @@ import json
 @click.option('-a', '--area', help="Type in the maximum area of the testing boundary in meters squared", default=4)
 @click.option('-ms', '--max-speed', help="Actuator Modeling: maximum speed for our acquired motor", default=1)
 @click.option('-t', '--total-time', help="Total time (in seconds) for evaluation", default=60)
-def varying_time_generator(area, total_time, max_speed, seed, boundary_threshold=0):
+@click.option('-wheel', '--wheel-radius', help="", default=0.0325)
+@click.option('-threshold', '--boundary-threshold', help="Threshold for how close the robot should get to the walls, in meters", default=0.5)
+@click.option('-rev', '--allow-reversals', help="", default=False)
+def varying_time_generator(area, total_time, max_speed, seed, wheel_radius=0.0325, boundary_threshold=0):
 
     random.seed(seed)
     
@@ -48,7 +51,7 @@ def varying_time_generator(area, total_time, max_speed, seed, boundary_threshold
     total_time_counter = SETTLE_TIME
     
     x_position, y_position = 0, 0
-
+    
     schedule = [[0, 0, 0]]
     
     while total_time >= total_time_counter:
@@ -63,6 +66,7 @@ def varying_time_generator(area, total_time, max_speed, seed, boundary_threshold
         
         # Computing speed and constraint sampling direction
         speed = distance_sample / time
+        speed /= wheel_radius # v = radius * angular speed, turn speed from m/s to rad/s, since the agent expects a target of wheel speed 
         
         # x component
         distance_to_right_wall = MAX_DISTANCE - x_position
@@ -91,7 +95,7 @@ def varying_time_generator(area, total_time, max_speed, seed, boundary_threshold
         y_component_direction = sign_y * math.sin(quadrant_angle)
         
         direction = math.atan2(y_component_direction, x_component_direction)
-        direction *= (180 / math.pi)
+        # direction *= (180 / math.pi) # Keep direction in radians
         
         #Update position
         x_position += distance_sample * x_component_direction # x coordinate of position
@@ -107,9 +111,8 @@ def varying_time_generator(area, total_time, max_speed, seed, boundary_threshold
         total_time_counter += time
                 
 
-    schedule.append([total_time, 0, round(direction, 3)])
+    schedule.append([round(total_time_counter, 3), 0, round(direction, 3)]) 
     return schedule
-
 
 
 if __name__ == "__main__":
