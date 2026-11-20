@@ -41,7 +41,6 @@ import json
 @click.option('-threshold', '--boundary-threshold', help="Threshold for how close the robot should get to the walls, in meters", default=0.5)
 @click.option('-rev', '--allow-reversals', help="", default=False)
 def varying_time_generator(area, total_time, max_speed, seed, wheel_radius=0.0325, boundary_threshold=0):
-
     random.seed(seed)
     
     MAX_DISTANCE = (math.sqrt(area) / 2) - boundary_threshold
