@@ -175,6 +175,38 @@ def schedule_target(schedule: list[list[float]], t: float) -> tuple[float, float
     return speed, yaw
 
 
+# base_world_env.step() ends an episode at |pitch| > 50 deg, and an env's reset_model() is
+# free to spawn the robot past that - ControlAgentTrainingEnv does it ~70% of the time on the
+# calibrated world, because its "face a random direction" spread lands on the pitch axis rather
+# than on yaw. A spawn that is already terminal dies on its very next step, so counting it as a
+# fall cascades: a 65 s clip reported 188 falls, 175 of them inside the 1 s reset grace window,
+# with a median of one single step between reset and "fall". Those are spawn failures, not the
+# policy losing its balance, and they drown out the real number (~16 on the same clip).
+#
+# The envs are training code and stay as they are, so the harness re-rolls the spawn instead:
+# an evaluation only ever starts the robot from a pose it could actually be asked to balance.
+PITCH_TERMINATION = np.radians(50)
+# Re-rolling only to "not already terminal" is not enough: that still accepts a 49 deg lean,
+# which is not a pose anything recovers from, and the clip just fails differently. The envs'
+# reset_model() intends a near-upright spawn ("rotate and pitch slightly", +/-0.2 rad), so the
+# harness holds spawns to that, with headroom for the qpos noise on top.
+SPAWN_PITCH_MAX = np.radians(15)
+MAX_SPAWN_ATTEMPTS = 200
+
+
+def reset_upright(env, robot, seed: int | None = None) -> tuple[np.ndarray, int]:
+    """Reset until the robot spawns in a non-terminal pose. Returns (obs, spawns discarded)."""
+    for attempt in range(MAX_SPAWN_ATTEMPTS):
+        # seed only the first attempt - re-rolling under the same seed can repeat the pose
+        obs, _ = env.reset(seed=seed) if attempt == 0 else env.reset()
+        if abs(robot.get_pitch()) <= SPAWN_PITCH_MAX:
+            return obs, attempt
+    raise click.ClickException(
+        f"{MAX_SPAWN_ATTEMPTS} consecutive resets spawned past {np.degrees(SPAWN_PITCH_MAX):.0f} deg "
+        f"of pitch (termination is {np.degrees(PITCH_TERMINATION):.0f} deg) - check the env's reset_model()"
+    )
+
+
 def yaw_error(robot, env_id: str) -> float:
     if env_id == "ControlAgentTrainingEnv":
         # target_yaw here is a heading (radians) tracked against get_yaw(), not a
@@ -252,6 +284,9 @@ def video(ticket: str, model: str, output: Path | None, duration: float | None, 
     )
     click.echo(f"Wrote {output}: {results['duration_s']:.0f}s, {results['falls']} fall(s), "
                f"schedule={schedule_name}, xml={xml_file}")
+    if results.get("discarded_spawns"):
+        click.secho(f"note: re-rolled {results['discarded_spawns']} spawn(s) that started past "
+                    f"{np.degrees(SPAWN_PITCH_MAX):.0f} deg of pitch", fg="yellow")
 
 
 def record_video(model: str, output: str, schedule: list[list[float]] | None, env_id: str,
@@ -276,7 +311,7 @@ def record_video(model: str, output: str, schedule: list[list[float]] | None, en
     np.random.seed(seed)
 
     try:
-        obs, _ = env.reset(seed=seed)
+        obs, discarded_spawns = reset_upright(env, robot, seed=seed)
         frame_every = round(1 / (VIDEO_FPS * CONTROL_DT))
         total_steps = round(duration / CONTROL_DT)
         falls = 0
@@ -315,7 +350,8 @@ def record_video(model: str, output: str, schedule: list[list[float]] | None, en
 
                 if terminated:
                     falls += 1
-                    obs, _ = env.reset()
+                    obs, discarded = reset_upright(env, robot)
+                    discarded_spawns += discarded
                     last_reset = t
 
     finally:
@@ -326,6 +362,7 @@ def record_video(model: str, output: str, schedule: list[list[float]] | None, en
         "duration_s": duration,
         "reset_grace_s": reset_grace,
         "falls": falls,
+        "discarded_spawns": discarded_spawns,
         "mean_speed_error": float(np.mean(speed_errors)),
         "mean_yaw_error": float(np.mean(yaw_errors)),
         "mean_abs_pitch_deg": float(np.mean(pitches)),

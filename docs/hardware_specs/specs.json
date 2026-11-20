@@ -1,0 +1,282 @@
+{
+  "_notes": "Parts pulled from 3 Amazon orders placed 2026-09-15. Amazon product pages weren't reachable directly, so specs come from manufacturer/reseller pages for the same generic part. 'source_url' is where the bulk of the specs came from; 'other_sources' backs up specific numbers. Fields marked 'unverified' or 'caveat' are worth checking against the physical part.",
+  "items": [
+    {
+      "type": "motor (DC gear motor with integrated encoder)",
+      "exact_name_on_invoice": "High Torque Gear Motor JGB37-520 Encoder Motor, Smart Car Motor DC12V Small Car Plane Model Engine Kit, Low Speed Geared Motor (Color: 12v, Size: 330RPM)",
+      "seller": "Xuulan (Amazon)",
+      "quantity": 2,
+      "price_each_usd": 24.39,
+      "source_url": "https://rcdrone.top/products/jgb37-520-dc-gear-motor-with-encoder",
+      "other_sources": [
+        "https://colgroad.com/product/dc-gear-motor-333rpm-12v-jgb37-520",
+        "https://mikroelectron.com/product/me-13526",
+        "https://ozrobotics.com/shop/encoder-reduction-motor-jgb37-520b-12v-dc-deceleration-motor-12v-333rpm/"
+      ],
+      "specs": {
+        "model": "JGB37-520 (also sold as JGB37-520B / CHR-GM37-520)",
+        "motor_type": "brushed DC, metal spur reduction gearbox, reversible",
+        "rated_voltage": "12V DC",
+        "speed_variant": "listed as 330RPM; reference tables list this ratio as 319 RPM (18.8:1); some sellers call it 333 RPM and quote 1:30 ratio. Treat true ratio as UNVERIFIED - measure encoder counts per output rev to confirm",
+        "gear_ratio": "18.8:1 per rcdrone table (most likely); 1:30 per some resellers",
+        "no_load_speed": "319 RPM @ 12V",
+        "no_load_current": "0.1 A",
+        "loaded_speed_at_max_efficiency": "255 RPM",
+        "torque_at_max_efficiency": "0.48 kgf·cm (~0.047 N·m)",
+        "loaded_current": "0.2 A",
+        "output_power": "2.4 W",
+        "stall_torque": "1.9 kgf·cm (~0.186 N·m)  [colgroad lists max torque 1.5 kg·cm]",
+        "stall_current": "1.2 A",
+        "starting_voltage": "1.5 V",
+        "weight": "~150 g",
+        "dimensions": {
+          "gearbox_diameter": "37 mm",
+          "motor_body_diameter": "32 mm",
+          "gearbox_length": "22 mm at 18.8:1",
+          "encoder_diameter": "32 mm",
+          "encoder_rear_projection": "11.75 mm",
+          "shaft_offset_from_motor_centerline": "7 mm",
+          "mounting": "6x M3 threaded holes on 31 mm pitch circle, ~3.5-4 mm deep"
+        },
+        "output_shaft": "6 mm D-shaft, 15.5 mm long, flat length 12 mm, 5.5 mm across flat; 12 mm dia x 6 mm locating boss",
+        "encoder": {
+          "type": "A/B quadrature incremental magnetic Hall",
+          "base_resolution": "11 PPR at motor shaft (22-pole magnet ring). Output-shaft counts = 11 x gear ratio (≈207 PPR at 18.8:1, ≈330 PPR at 30:1), x4 with full quadrature decoding (≈827 CPR at 18.8:1)",
+          "supply": "3.3-5V DC (separate from motor supply)",
+          "signal_response": "100 kHz",
+          "pullups": "built-in"
+        },
+        "connector": "PH2.0 6-pin, ~144 mm cable",
+        "wiring": {
+          "red": "motor power + (swap with white to reverse)",
+          "white": "motor power -",
+          "blue": "encoder VCC (3.3-5V)",
+          "black": "encoder GND",
+          "yellow": "encoder channel A or B",
+          "green": "encoder channel B or A"
+        },
+        "caveat": "Do not put 12V on encoder VCC. All figures are supplier reference data."
+      }
+    },
+    {
+      "type": "IMU (10DOF: accel + gyro + magnetometer + barometer)",
+      "exact_name_on_invoice": "GY-91 10DOF Sensor Module MPU9250 for bmp280 IIC for spi GY-91",
+      "seller": "XIHAIZHUUS (Amazon)",
+      "quantity": 1,
+      "price_usd": 9.98,
+      "source_url": "https://www.hotmcu.com/gy91-10dof-mpu9250-and-bmp280-multisensor-module-p-341.html",
+      "other_sources": [
+        "https://myduino.com/product/jhs-014/",
+        "https://rees52.com/products/mpu9250-bmp280-module-northbear-10dof-gy-91-acceleration-gyroscope-compass-nine-shaft-sensor-rs1125",
+        "https://www.communica.co.za/products/bmt-7dof-mpu9250-bmp280-sensor",
+        "https://www.tokopedia.com/supreme/gy-91-10dof-imu-mpu9250-bmp280-9-axis-gyro-accelero-compass-pressure"
+      ],
+      "specs": {
+        "module": "GY-91",
+        "chips": "InvenSense MPU-9250 (3-axis accel + 3-axis gyro + AK8963 3-axis magnetometer) + Bosch BMP280 (pressure + temperature)",
+        "interface": "I2C or SPI",
+        "supply_voltage": "3.0-5.0V (onboard LDO regulator)",
+        "adc_resolution": "16-bit ADC, 16-bit data output",
+        "gyro_range": "±250 / 500 / 1000 / 2000 °/s",
+        "accel_range": "±2 / 4 / 8 / 16 g",
+        "magnetometer_range": "±4800 µT",
+        "pressure_range": "300-1100 hPa",
+        "pin_pitch": "2.54 mm",
+        "module_size": "14.3 x 20.5 mm (some listings say 23 x 18 x 5 mm)",
+        "weight": "~3-5 g",
+        "pins": "VIN, 3V3, GND, SCL, SDA, SDO/SAO, NCS (MPU-9250 SPI chip select), CSB (BMP280 SPI chip select)",
+        "default_i2c_addresses": "MPU-9250: 0x68 (0x69 if AD0 high); AK8963 mag: 0x0C (reachable via MPU bypass mode); BMP280: 0x76 or 0x77 [from chip datasheets, not the listing]",
+        "caveat": "MPU-9250 is discontinued; many cheap GY-91 boards ship an MPU-6500 (no magnetometer). Check WHO_AM_I register: 0x71 = MPU-9250, 0x70 = MPU-6500. [general knowledge, not from listing]"
+      }
+    },
+    {
+      "type": "microcontroller (ESP32 dev board with OLED)",
+      "exact_name_on_invoice": "ideaspark ESP32 Development Board Integrated 0.96 Inch OLED Display, CH340 Driver, WiFi+BLE Wireless Module, and Micro USB Works Great for Arduino/Micropython (Pin Header Soldered)",
+      "seller": "wideland (Amazon)",
+      "quantity": 1,
+      "price_usd": 11.99,
+      "source_url": "https://www.desertcart.nl/products/671621161-esp32-development-board-integrated-0-96-inch-oled-display-ch340",
+      "other_sources": [
+        "https://www.fruugo.co.nz/esp32-esp-wroom-32-wifi-development-board-module-ch340-with-096-oled-display-for-esp32-oled/p-361901955",
+        "https://www.espboards.dev/esp32/esp32-wroom-32d-oled/"
+      ],
+      "specs": {
+        "amazon_asin": "B0CN4F354N",
+        "module": "ESP32-WROOM-32",
+        "cpu": "dual-core Xtensa LX6, up to 240 MHz",
+        "flash": "4 MB",
+        "sram": "520 KB",
+        "wireless": "Wi-Fi 802.11 b/g/n 2.4 GHz + Bluetooth 4.2 / BLE",
+        "usb": "Micro-USB, CH340 USB-to-serial (install CH340 driver)",
+        "layout": "same peripheral pinout as ESP32 DevKit V1 (30-pin), with OLED added",
+        "oled": "0.96 inch, 128x64, SSD1306 controller, two-tone (yellow top band / blue)",
+        "oled_i2c_pins": "SDA = GPIO21, SCL = GPIO22 (per listing). Note espboards.dev shows a different board variant using SDA=GPIO4/SCL=GPIO15/RST=GPIO16; if the display doesn't respond, try those",
+        "oled_i2c_address": "0x3C",
+        "logic_level": "3.3V (GPIOs are NOT 5V tolerant)",
+        "power_input": "5V via USB or VIN pin; 3V3 pin out",
+        "dac": "2 channels (GPIO25, GPIO26)",
+        "adc": "12-bit SAR; ADC2 pins unusable while Wi-Fi is on",
+        "strapping_pins": "GPIO0, 2, 5, 12, 15 (avoid pulling these at boot); GPIO34-39 input only; GPIO6-11 tied to flash",
+        "dimensions": "package ~2.83 x 2.05 x 0.63 in",
+        "weight": "~18 g (0.634 oz)",
+        "headers": "pre-soldered",
+        "caveat": "Since the OLED shares the I2C bus on GPIO21/22, the GY-91 can sit on the same bus (different addresses)."
+      }
+    },
+    {
+      "type": "motor driver (dual H-bridge)",
+      "exact_name_on_invoice": "Shutao 2 Pcs TB6612FNG DC Motor Drive Module 1.2A Peak 3.2A Compatible with DRV8833 Better Than L298N",
+      "seller": "Shutao (Amazon)",
+      "quantity": "1 pack (2 modules)",
+      "price_usd": 5.99,
+      "source_url": "https://wiki.dfrobot.com/dri0044-a/",
+      "other_sources": [
+        "https://eu.robotshop.com/products/motor-driver-dual-tb6612fng-v2",
+        "https://shillehtek.com/blogs/shillehtek-product-manuals/tb6612fng-dual-motor-driver-module-arduino-esp32-manual",
+        "https://protosupplies.com/product/tb6612fbg-dual-motor-driver-module/"
+      ],
+      "specs": {
+        "ic": "Toshiba TB6612FNG, dual MOSFET H-bridge",
+        "channels": "2 DC motors (or 1 bipolar stepper)",
+        "logic_supply_VCC": "2.7-5.5V (works with 3.3V ESP32 logic)",
+        "motor_supply_VM": "4.5-13.5V recommended, 15V absolute max",
+        "continuous_current": "1.2 A per channel",
+        "peak_current": "2 A continuous pulse / 3.2 A single pulse per channel",
+        "pwm_frequency": "up to 100 kHz",
+        "control_modes": "CW, CCW, short brake, stop (via IN1/IN2 + PWM)",
+        "standby": "STBY pin must be HIGH to enable outputs",
+        "protection": "thermal shutdown, low-voltage detection",
+        "pins": "VM, VCC, GND, AO1, AO2, BO1, BO2, PWMA, AIN1, AIN2, STBY, BIN1, BIN2, PWMB",
+        "module_size": "~20 x 20 mm (0.8 x 0.8 in)",
+        "fit_with_motors": "JGB37-520 stall current is ~1.2 A @ 12V, which is right at the 1.2 A continuous limit and well under the 3.2 A peak - OK, but avoid sustained stalls. 12V on VM is within limits; 2S Li-ion (8.4V max) is also fine."
+      }
+    },
+    {
+      "type": "voltage regulator (DC-DC buck converter)",
+      "exact_name_on_invoice": "SOVNSG LM2596 DC-DC Buck Converter, 10pcs, 3.2V-35V to 1.25V-35V",
+      "seller": "Tleang Ziau (Amazon)",
+      "quantity": "1 pack (10 modules)",
+      "price_usd": 3.79,
+      "source_url": "https://www.phippselectronics.com/support/lm2596s-dc-dc-step-down-adjustable-power-supply-module/",
+      "other_sources": [
+        "https://cdn.ozdisan.com/ETicaret_Dosya/591638_3170582.PDF",
+        "https://www.pcbway.ru/project/gifts_detail/LM2596S_DC_DC_3A_Buck_Adjustable_Step_down_Power_Supply_Converter_Module.html",
+        "https://botland.com.pl/en/step-down-converters/2967-step-down-voltage-inverter-lm2596-32v-35v-3a.html"
+      ],
+      "specs": {
+        "ic": "TI LM2596S-ADJ (clone modules common)",
+        "input_voltage": "3.2-35V (some listings say up to 40V; don't exceed 35V)",
+        "output_voltage": "1.25-35V adjustable via multi-turn trimpot; must be ~1.5V+ below input",
+        "output_current": "3 A max; ~2 A continuous without heatsink",
+        "switching_frequency": "~65-150 kHz (65 kHz on clones)",
+        "output_ripple": "<30 mV",
+        "efficiency": "up to ~92% (lower at low Vout; ~73% at 12V->3V 3A per one datasheet)",
+        "operating_temp": "-45 to +85 °C",
+        "pins": "IN+, IN-, OUT+, OUT-",
+        "size": "~43 x 21 x 14 mm",
+        "caveat": "Ships at an arbitrary output voltage - set it with a multimeter BEFORE connecting the ESP32. Turn trimpot counterclockwise to lower output."
+      }
+    },
+    {
+      "type": "battery (18650 Li-ion cell)",
+      "exact_name_on_invoice": "Yuntunele 2Pack 18650 Batteries 3.7V 3500mAh Button Top Rechargeable Battery, 3500mah 3.7v 12.95wh Rechargeable Batteries, for LED Flashlight, Headlamps, Doorbells, RC Cars",
+      "seller": "Yuntunele (Amazon)",
+      "quantity": "1 pack (2 cells)",
+      "price_usd": 15.99,
+      "source_url": "https://www.desertcart.sn/products/639800032",
+      "other_sources": [
+        "https://toytooth.com/products/yuntunele-replacement-battery-18650-rechargeable-3-7v-high-capacity-3500mah-genuine18650-battery-flat-top-battery-for-headlamp"
+      ],
+      "specs": {
+        "manufacturer": "Shenzhen Yuntun Technology Co., Ltd",
+        "format": "18650 cylindrical Li-ion, button top",
+        "nominal_voltage": "3.7V",
+        "full_charge_voltage": "4.2V (standard Li-ion; not stated on listing)",
+        "cutoff_voltage": "~2.5-2.75V (standard Li-ion; not stated on listing)",
+        "rated_capacity": "3500 mAh (claimed)",
+        "energy": "12.95 Wh (claimed)",
+        "cycle_life": "up to 1200 cycles (claimed)",
+        "shelf_life": "24 months",
+        "protection": "listing claims 'six layers of safety protection' - likely a protection circuit, not confirmed",
+        "size": "~65 x 18 mm (2.56 x 0.71 in); button-top cells run a few mm longer than flat-top",
+        "max_discharge_current": "NOT STATED",
+        "pack_config_in_project": "2 cells in series in the ACEIRMC holder = 7.4V nominal, 8.4V full, ~6V empty",
+        "caveat": "Off-brand capacity claims are often inflated; one buyer measured ~1.8-2.1 Ah per cell. No continuous discharge rating given - two JGB37 motors near stall (~2.4 A total) could be a stretch. Budget for ~2000 mAh real capacity."
+      }
+    },
+    {
+      "type": "battery holder (2x18650 case with switch)",
+      "exact_name_on_invoice": "ACEIRMC 2pcs 18650 Battery Storage Case 2 Slots x 3.7V for 2x18650 Batteries Holder Box Container with ON/Off Switch (2 Slots with Switch Cover)",
+      "seller": "Aceirmc US (Amazon)",
+      "quantity": "1 pack (2 holders)",
+      "price_usd": 6.99,
+      "source_url": "https://www.desertcart.sg/products/376659329-2pcs-18650-battery-storage-case-2-slots-x-3-7v",
+      "other_sources": [
+        "https://st.robu.in/?p=223415",
+        "https://alpha3dlab.com/products/2-x-18650-battery-holder-w-cover-switch"
+      ],
+      "specs": {
+        "capacity": "2 x 18650 cells",
+        "wiring": "series (2S)",
+        "output_voltage": "7.4V nominal / 8.4V full charge",
+        "switch": "built-in ON/OFF",
+        "cover": "sliding cover secured with small screw",
+        "output": "wire leads (~15 cm)",
+        "material": "ABS plastic, black",
+        "dimensions": "~93 x 43 x 23 mm (generic equivalent)",
+        "weight": "~33 g (generic equivalent)",
+        "protection_circuit": "none (no BMS)",
+        "caveat": "A buyer reported poor contact with flat-top cells; your Yuntunele cells are button-top, so should be fine. 7.4V nominal is below the motors' 12V rating, so expect roughly 60-70% of rated speed (~190-220 RPM no-load) unless you add a boost converter."
+      }
+    },
+    {
+      "type": "battery charger",
+      "exact_name_on_invoice": "18650 Battery Charger for 3.7V/3.6V Li-ion Batteries 26650 18650 21700 14500 16340 (RCR123), Ni-MH/Ni-Cd AA AAA C Batteries-Upgraded",
+      "seller": "TRAELY (Amazon)",
+      "quantity": 1,
+      "price_usd": 9.99,
+      "source_url": "https://www.walmart.com/ip/14598500342",
+      "other_sources": [
+        "https://www.eblofficial.com/products/18650-charger"
+      ],
+      "specs": {
+        "note": "No spec sheet found for the exact TRAELY model; specs below are from functionally identical generic 2-bay universal chargers",
+        "compatible_li_ion": "3.6/3.7V: 26650, 21700, 18650, 16340 (RCR123), 14500",
+        "compatible_nimh_nicd": "1.2V: AA, AAA, C",
+        "bays": "2 (typical)",
+        "input": "5V/2A via USB (typical)",
+        "li_ion_charge": "CC/CV to 4.2V, ~1A per slot (typical)",
+        "nimh_charge": "~0.35-0.4A per slot (typical)",
+        "features": "auto chemistry detection, LED status, reverse polarity protection (typical)",
+        "approx_charge_time": "~3-4 h for a 3500 mAh 18650 at 1A"
+      }
+    },
+    {
+      "type": "prototyping board (perfboard)",
+      "exact_name_on_invoice": "Ferwooh 10pcs PCB Board Prototype Kit Protoboard Circuit Board Breadboards 432 Holes Perfboard Universal Printed Circuit Breadboard for DIY Soldering Electronic Projects and Electronic Experiment",
+      "seller": "Ferwooh-US (Amazon)",
+      "quantity": "1 pack (10 boards)",
+      "price_usd": 5.78,
+      "source_url": "https://www.daphneoram.org/products/10pcs-pcb-board-prototype-kit-protoboard-circuit-board-bread/239223557/",
+      "other_sources": [
+        "https://www.fruugo.my/10pcs-pcb-prototype-kit-432-holes-universal-circuit-board/p-349869080"
+      ],
+      "specs": {
+        "dimensions": "50 x 70 mm",
+        "holes": "432 (18 x 24 grid)",
+        "hole_pitch": "2.54 mm (0.1 in)",
+        "hole_diameter": "~1.0 mm",
+        "thickness": "1.2 mm",
+        "material": "94HB phenolic (bakelite), orange/brown",
+        "copper": "single-sided, isolated pads (no connected strips)",
+        "mounting_holes": "4 corners (typical for 5x7 boards)"
+      }
+    }
+  ],
+  "system_level_notes": {
+    "power_tree_suggestion": "2S 18650 pack (6-8.4V) -> TB6612FNG VM directly; same pack -> LM2596 set to 5V -> ESP32 VIN; ESP32 3V3 -> GY-91 VIN and TB6612 VCC",
+    "i2c_bus": "ESP32 GPIO21/22 shared by OLED (0x3C), MPU-9250 (0x68), BMP280 (0x76/0x77)",
+    "encoder_pins": "4 encoder signals (2 per motor) need interrupt-capable GPIOs; ESP32 PCNT peripheral can count quadrature in hardware",
+    "voltage_mismatch": "Motors are 12V-rated but the battery pack is 7.4V nominal - top speed and torque will be lower than the spec table"
+  }
+}
