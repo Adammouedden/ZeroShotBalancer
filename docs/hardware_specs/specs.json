@@ -1,5 +1,5 @@
 {
-  "_notes": "Parts pulled from 3 Amazon orders placed 2026-09-15 (orders 111-0819403-0943430, 111-8459525-9873841, 111-4636594-9708257). Amazon product pages weren't reachable directly, so specs come from manufacturer/reseller pages for the same generic part. 'source_url' is where the bulk of the specs came from; 'other_sources' backs up specific numbers. Fields marked 'unverified' or 'caveat' are worth checking against the physical part.",
+  "_notes": "Parts pulled from 3 Amazon orders placed 2026-09-15. Amazon product pages weren't reachable directly, so specs come from manufacturer/reseller pages for the same generic part. 'source_url' is where the bulk of the specs came from; 'other_sources' backs up specific numbers. Fields marked 'unverified' or 'caveat' are worth checking against the physical part.",
   "items": [
     {
       "type": "motor (DC gear motor with integrated encoder)",
