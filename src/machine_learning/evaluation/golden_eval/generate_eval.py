@@ -40,7 +40,7 @@ import json
 @click.option('-wheel', '--wheel-radius', help="", default=0.0325)
 @click.option('-threshold', '--boundary-threshold', help="Threshold for how close the robot should get to the walls, in meters", default=0.5)
 @click.option('-rev', '--allow-reversals', help="", default=False)
-def varying_time_generator(area, total_time, max_speed, seed, wheel_radius=0.0325, boundary_threshold=0):
+def varying_time_generator(area, total_time, max_speed, seed, wheel_radius=0.0325, boundary_threshold=0, allow_reversals=False):
     random.seed(seed)
     
     MAX_DISTANCE = (math.sqrt(area) / 2) - boundary_threshold
@@ -71,12 +71,16 @@ def varying_time_generator(area, total_time, max_speed, seed, wheel_radius=0.032
         distance_to_right_wall = MAX_DISTANCE - x_position
         distance_to_left_wall = x_position - -1 * MAX_DISTANCE
         
+        reversal_counter = 0
+        
         if distance_to_right_wall < distance_sample: # Near the right wall so move left
             sign_x = -1
         elif distance_to_left_wall < distance_sample: # Near the left wall, so move right
             sign_x = 1
         else:
             sign_x = random.choice((-1, 1)) # Nearing neither left or right wall, so randomly choose direction
+            if allow_reversals:
+                reversal_counter +=1 
         
         # y component
         distance_to_top_wall = MAX_DISTANCE - y_position
@@ -88,17 +92,25 @@ def varying_time_generator(area, total_time, max_speed, seed, wheel_radius=0.032
             sign_y = 1
         else:
             sign_y = random.choice((-1, 1)) # Nearing neither top or bottom wall, so randomly choose direction
+            if allow_reversals:
+                reversal_counter +=1
+        
+
+            
         
         quadrant_angle = random.uniform(0, math.pi / 2)
         x_component_direction = sign_x * math.cos(quadrant_angle)
         y_component_direction = sign_y * math.sin(quadrant_angle)
         
         direction = math.atan2(y_component_direction, x_component_direction)
-        # direction *= (180 / math.pi) # Keep direction in radians
         
         #Update position
         x_position += distance_sample * x_component_direction # x coordinate of position
         y_position += distance_sample * y_component_direction # y coordinate of position
+        
+        if reversal_counter == 2:
+            speed *= -1
+            direction = (direction + (2 * math.pi) % (2 * math.pi) - math.pi) # theta + 2pi (this flips it 180 degrees) % 2pi (this keeps it within range [0, 2pi] - pi ( to shift the range to [-pi, pi] since that is what we use, not [0, 2pi]) )
         
         assert abs(x_position) <= MAX_DISTANCE and abs(y_position) <= MAX_DISTANCE
         
@@ -120,8 +132,9 @@ if __name__ == "__main__":
     max_speed = 1 # 1 m/s comes from actuator modeling
     seed = 0
     threshold = 0 # in meters
+    allow_reversals=True
 
-    schedule = varying_time_generator(area=size, total_time=total_time, max_speed=max_speed, seed=seed, boundary_threshold=threshold)
+    schedule = varying_time_generator(area=size, total_time=total_time, max_speed=max_speed, seed=seed, boundary_threshold=threshold, allow_reversals=allow_reversals)
     print(*schedule, sep="\n")
     
     with open("src/machine_learning/evaluation/golden_eval/schedules/test.json", "w", encoding="utf-8") as f:
