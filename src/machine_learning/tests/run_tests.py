@@ -1,4 +1,4 @@
-"""Run the observation, action, and calibrated workflow test suites."""
+"""Run the robot environment, calibrated workflow, and golden schedule tests."""
 
 import argparse
 from pathlib import Path
@@ -35,7 +35,7 @@ def main(argv: list[str] | None = None) -> int:
         dest="suite",
         action="store_const",
         const="all",
-        help="Run all three test suites (default).",
+        help="Run all test suites (default).",
     )
     parser.set_defaults(suite="all")
     parser.add_argument(
@@ -56,6 +56,7 @@ def main(argv: list[str] | None = None) -> int:
         test_groups = [
             [test_files["observations"], test_files["actions"]],
             [test_files["calibrated-workflow"]],
+            [test_directory / "golden_eval"],
         ]
     else:
         test_groups = [[test_files[args.suite]]]
